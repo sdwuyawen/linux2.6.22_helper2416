@@ -1,0 +1,41 @@
+config SND_SOC_AC97_CODEC
+	tristate
+	depends on SND_SOC
+
+#add by wu
+config SND_SOC_WM8580
+	tristate
+	depends on SND_SOC
+#add end
+
+config SND_SOC_WM8731
+	tristate "wm8731 for s3c2416"
+	depends on SND_SOC
+
+config SND_SOC_WM8750
+	tristate
+	depends on SND_SOC
+
+config SND_SOC_WM8753
+	tristate
+	depends on SND_SOC
+
+#add by wu
+config SND_SOC_WM8772
+	tristate
+	depends on SND_SOC
+	
+config SND_SOC_WM8990
+	tristate
+	depends on SND_SOC
+#add end
+
+config SND_SOC_WM9712
+	tristate
+	depends on SND_SOC
+
+#add by wu
+config SND_SOC_WM9713
+	tristate
+	depends on SND_SOC
+#add end
