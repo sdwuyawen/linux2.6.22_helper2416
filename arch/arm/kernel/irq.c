@@ -120,6 +120,7 @@ asmlinkage void __exception asm_do_IRQ(unsigned int irq, struct pt_regs *regs)
 	if (irq >= NR_IRQS)
 		desc = &bad_irq_desc;
 
+#if 0
 	/* 如果10s之内，都是同一个进程在运行，就打印 task_struct*/
 	if(irq == IRQ_TIMER4)
 	{
@@ -143,6 +144,7 @@ asmlinkage void __exception asm_do_IRQ(unsigned int irq, struct pt_regs *regs)
 			printk("pc = %08x\n", regs->ARM_pc);
 		}
 	}
+#endif
 
 
 	irq_enter();
