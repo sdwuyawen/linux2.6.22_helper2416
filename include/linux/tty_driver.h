@@ -182,7 +182,7 @@ struct tty_driver {
 	 * Pointer to the tty data structures
 	 */
 	struct tty_struct **ttys;
-	struct ktermios **termios;
+	struct ktermios **termios;		/* 保存当前线路设置，参考tty_std_termios */
 	struct ktermios **termios_locked;
 	void *driver_state;	/* only used for the PTY driver */
 	
@@ -202,14 +202,14 @@ struct tty_driver {
 		    unsigned int cmd, unsigned long arg);
 	long (*compat_ioctl)(struct tty_struct *tty, struct file * file,
 			     unsigned int cmd, unsigned long arg);
-	void (*set_termios)(struct tty_struct *tty, struct ktermios * old);
-	void (*throttle)(struct tty_struct * tty);
+	void (*set_termios)(struct tty_struct *tty, struct ktermios * old);	/* 改变termios设置 */
+	void (*throttle)(struct tty_struct * tty);							/* 4个数据抑制函数 */
 	void (*unthrottle)(struct tty_struct * tty);
 	void (*stop)(struct tty_struct *tty);
 	void (*start)(struct tty_struct *tty);
 	void (*hangup)(struct tty_struct *tty);
 	void (*break_ctl)(struct tty_struct *tty, int state);
-	void (*flush_buffer)(struct tty_struct *tty);
+	void (*flush_buffer)(struct tty_struct *tty);						/* 刷新缓冲区并丢弃剩下的数据 */
 	void (*set_ldisc)(struct tty_struct *tty);
 	void (*wait_until_sent)(struct tty_struct *tty, int timeout);
 	void (*send_xchar)(struct tty_struct *tty, char ch);

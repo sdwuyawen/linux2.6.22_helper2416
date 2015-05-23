@@ -1068,7 +1068,7 @@ static struct uart_ops s3c24xx_serial_ops = {
 static struct uart_driver s3c24xx_uart_drv = {
 	.owner		= THIS_MODULE,
 	.dev_name	= "s3c2410_serial",
-	.nr		= 3,
+	.nr		= 3,									/* uart个数 */
 	.cons		= S3C24XX_SERIAL_CONSOLE,
 	.driver_name	= S3C24XX_SERIAL_NAME,
 	.major		= S3C24XX_SERIAL_MAJOR,
@@ -1792,13 +1792,13 @@ static int __init s3c24xx_serial_modinit(void)
 {
 	int ret;
 
-	ret = uart_register_driver(&s3c24xx_uart_drv);
+	ret = uart_register_driver(&s3c24xx_uart_drv);			/* 会调用tty_register_driver() */
 	if (ret < 0) {
 		printk(KERN_ERR "failed to register UART driver\n");
 		return -1;
 	}
 
-	s3c2400_serial_init();
+	s3c2400_serial_init();									/* 注册平台驱动，probe函数中有uart_add_one_port() */
 	s3c2410_serial_init();
 	s3c2412_serial_init();
 	s3c2440_serial_init();

@@ -563,6 +563,7 @@ static void uart_send_xchar(struct tty_struct *tty, char ch)
 	struct uart_port *port = state->port;
 	unsigned long flags;
 
+	/* 如果在uart_ops中实现了send_xchar */
 	if (port->ops->send_xchar)
 		port->ops->send_xchar(port, ch);
 	else {
@@ -2208,11 +2209,11 @@ int uart_register_driver(struct uart_driver *drv)
 	if (!drv->state)
 		goto out;
 
-	normal  = alloc_tty_driver(drv->nr);
+	normal  = alloc_tty_driver(drv->nr);		/* 分配tty_driver */
 	if (!normal)
 		goto out;
 
-	drv->tty_driver = normal;
+	drv->tty_driver = normal;				/* 设置uart_driver对应的tty_driver */
 
 	normal->owner		= drv->owner;
 	normal->driver_name	= drv->driver_name;
@@ -2226,7 +2227,7 @@ int uart_register_driver(struct uart_driver *drv)
 	normal->init_termios.c_ispeed = normal->init_termios.c_ospeed = 9600;
 	normal->flags		= TTY_DRIVER_REAL_RAW | TTY_DRIVER_DYNAMIC_DEV;
 	normal->driver_state    = drv;
-	tty_set_operations(normal, &uart_ops);
+	tty_set_operations(normal, &uart_ops);	/* 设置tty_driver结构体的operations */
 
 	/*
 	 * Initialise the UART state(s).
@@ -2240,7 +2241,7 @@ int uart_register_driver(struct uart_driver *drv)
 		mutex_init(&state->mutex);
 	}
 
-	retval = tty_register_driver(normal);
+	retval = tty_register_driver(normal);		/* 注册tty驱动 */
  out:
 	if (retval < 0) {
 		put_tty_driver(normal);

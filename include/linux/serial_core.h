@@ -190,13 +190,13 @@ struct uart_ops {
 	 * Release IO and memory resources used by the port.
 	 * This includes iounmap if necessary.
 	 */
-	void		(*release_port)(struct uart_port *);
+	void		(*release_port)(struct uart_port *);			/* 释放该端口使用的I/O和memory资源 */
 
 	/*
 	 * Request IO and memory resources used by the port.
 	 * This includes iomapping the port if necessary.
 	 */
-	int		(*request_port)(struct uart_port *);
+	int		(*request_port)(struct uart_port *);			/* 申请该端口使用的I/O和memory资源 */
 	void		(*config_port)(struct uart_port *, int);
 	int		(*verify_port)(struct uart_port *, struct serial_struct *);
 	int		(*ioctl)(struct uart_port *, unsigned int, unsigned long);
@@ -352,11 +352,11 @@ struct tty_driver;
 
 struct uart_driver {
 	struct module		*owner;
-	const char		*driver_name;
-	const char		*dev_name;
-	int			 major;
-	int			 minor;
-	int			 nr;
+	const char		*driver_name;		/* 驱动名 */
+	const char		*dev_name;			/* 设备名 */
+	int			 major;					/* 主设备号 */
+	int			 minor;					/* 次设备号 */
+	int			 nr;						/* uart个数 */
 	struct console		*cons;
 
 	/*
