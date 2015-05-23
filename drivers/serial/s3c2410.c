@@ -324,10 +324,13 @@ s3c24xx_serial_rx_chars(int irq, void *dev_id)
 		ufcon = rd_regl(port, S3C2410_UFCON);
 		ufstat = rd_regl(port, S3C2410_UFSTAT);
 
+		/* 从UFSTAT获取rx fifo中待读取字节数 */
 		if (s3c24xx_serial_rx_fifocnt(ourport, ufstat) == 0)
 			break;
 
+		/* 读取UERSTAT获取error状态 */
 		uerstat = rd_regl(port, S3C2410_UERSTAT);
+		/* 从rx fifo读取一个字节 */
 		ch = rd_regb(port, S3C2410_URXH);
 
 		if (port->flags & UPF_CONS_FLOW) {
@@ -351,7 +354,7 @@ s3c24xx_serial_rx_chars(int irq, void *dev_id)
 
 		/* insert the character into the buffer */
 
-		flag = TTY_NORMAL;
+		flag = TTY_NORMAL;			/* 常规字符 */
 		port->icount.rx++;
 
 		if (unlikely(uerstat & S3C2410_UERSTAT_ANY)) {
@@ -384,12 +387,13 @@ s3c24xx_serial_rx_chars(int irq, void *dev_id)
 		if (uart_handle_sysrq_char(port, ch))
 			goto ignore_char;
 
+		/* 把接收到的字节插入serial的缓冲区 */
 		uart_insert_char(port, uerstat, S3C2410_UERSTAT_OVERRUN, ch, flag);
 
 	ignore_char:
 		continue;
 	}
-	tty_flip_buffer_push(tty);
+	tty_flip_buffer_push(tty);		/* 数据填满向上层push */
 
  out:
 	return IRQ_HANDLED;
@@ -419,7 +423,7 @@ static irqreturn_t s3c24xx_serial_tx_chars(int irq, void *id)
 	}
 
 	/* try and drain the buffer... */
-
+	/* 尝试把所有待发送数据都写入tx fifo */
 	while (!uart_circ_empty(xmit) && count-- > 0) {
 		if (rd_regl(port, S3C2410_UFSTAT) & ourport->info->tx_fifofull)
 			break;
@@ -519,6 +523,7 @@ static int s3c24xx_serial_startup(struct uart_port *port)
 
 	rx_enabled(port) = 1;
 
+	/* 注册rx中断 */
 	ret = request_irq(RX_IRQ(port),
 			  s3c24xx_serial_rx_chars, 0,
 			  s3c24xx_serial_portname(port), ourport);
@@ -534,6 +539,7 @@ static int s3c24xx_serial_startup(struct uart_port *port)
 
 	tx_enabled(port) = 1;
 
+	/* 注册tx中断 */
 	ret = request_irq(TX_IRQ(port),
 			  s3c24xx_serial_tx_chars, 0,
 			  s3c24xx_serial_portname(port), ourport);
@@ -1067,13 +1073,13 @@ static struct uart_ops s3c24xx_serial_ops = {
 
 static struct uart_driver s3c24xx_uart_drv = {
 	.owner		= THIS_MODULE,
-	.dev_name	= "s3c2410_serial",
+	.dev_name	= "s3c2410_serial",				/* 设备名 */
 	.nr		= 3,									/* uart个数 */
 	.cons		= S3C24XX_SERIAL_CONSOLE,
-	.driver_name	= S3C24XX_SERIAL_NAME,
-	.major		= S3C24XX_SERIAL_MAJOR,
-	.minor		= S3C24XX_SERIAL_MINOR,
-};
+	.driver_name	= S3C24XX_SERIAL_NAME,			/* 驱动名 */
+	.major		= S3C24XX_SERIAL_MAJOR,			/* 主设备号 */
+	.minor		= S3C24XX_SERIAL_MINOR,			/* 次设备号 */
+};/* uart个数 */
 
 static struct s3c24xx_uart_port s3c24xx_serial_ports[NR_PORTS] = {
 	[0] = {
