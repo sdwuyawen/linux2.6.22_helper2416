@@ -256,6 +256,10 @@ void __init smdk_machine_init(void)
 	s3c2410_gpio_setpin(S3C2410_GPF6, 1);
 	s3c2410_gpio_setpin(S3C2410_GPF7, 1);
 
+	/* ¹Ø±Õ·äÃùÆ÷ */
+	s3c2410_gpio_cfgpin(S3C2410_GPB0, S3C2410_GPB0_OUTP);
+	s3c2410_gpio_setpin(S3C2410_GPB0, 1);
+
 	if (machine_is_smdk2443())
 		smdk_nand_info.twrph0 = 50;
 

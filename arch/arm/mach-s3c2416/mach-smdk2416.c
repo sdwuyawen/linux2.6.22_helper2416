@@ -181,6 +181,10 @@ static void __init smdk2416_map_io(void)
 	s3c24xx_init_clocks(12000000);
 	s3c24xx_init_uarts(smdk2416_uartcfgs, ARRAY_SIZE(smdk2416_uartcfgs));
 	s3c24xx_set_board(&smdk2416_board);
+
+	/********* add here *********/
+
+	/********* end add *********/
 	/********* add here *********/
 	putstring_VA("end of smdk2416_map_io()\r\n");
 	/********* end add *********/
