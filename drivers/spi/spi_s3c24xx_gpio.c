@@ -101,27 +101,27 @@ static int s3c2410_spigpio_probe(struct platform_device *dev)
 	int ret;
 	int i;
 
-	master = spi_alloc_master(&dev->dev, sizeof(struct s3c2410_spigpio));
+	master = spi_alloc_master(&dev->dev, sizeof(struct s3c2410_spigpio));	/* 额外分配sizeof(struct s3c2410_spigpio)字节给master的私有数据 */
 	if (master == NULL) {
 		dev_err(&dev->dev, "failed to allocate spi master\n");
 		ret = -ENOMEM;
 		goto err;
 	}
 
-	sp = spi_master_get_devdata(master);
+	sp = spi_master_get_devdata(master);		/* 获取master的私有数据开始位置 */
 
-	platform_set_drvdata(dev, sp);
+	platform_set_drvdata(dev, sp);				/* 平台设备dev的驱动数据设置为sp,((_dev)->dev).driver_data = sp */
 
-	/* copy in the plkatform data */
+	/* copy in the platform data */
 	sp->info = dev->dev.platform_data;			/* 获取平台设备的数据，sp->info = spi_gpio_cfg */
 
 	/* 增加设置 */
-//	master->num_chipselect = 0xFFFF;			/* scan_boardinfo用到 */
+//	master->num_chipselect = 0xFFFF;				/* scan_boardinfo用到 */
 //	master->bus_num = sp->info->board_info->bus_num;
 
 	/* setup spi bitbang adaptor */
 	sp->bitbang.master = spi_master_get(master);
-	sp->bitbang.chipselect = s3c2410_spigpio_chipselect;
+	sp->bitbang.chipselect = s3c2410_spigpio_chipselect;		/* s3c2410_spigpio_chipselect()调用spi_gpio_cfg的chipselect()方法 */
 
 	sp->bitbang.txrx_word[SPI_MODE_0] = s3c2410_spigpio_txrx_mode0;
 	sp->bitbang.txrx_word[SPI_MODE_1] = s3c2410_spigpio_txrx_mode1;
@@ -134,7 +134,7 @@ static int s3c2410_spigpio_probe(struct platform_device *dev)
 
 	s3c2410_gpio_cfgpin(sp->info->pin_clk, S3C2410_GPIO_OUTPUT);
 	s3c2410_gpio_cfgpin(sp->info->pin_mosi, S3C2410_GPIO_OUTPUT);
-//	s3c2410_gpio_cfgpin(sp->info->pin_miso, S3C2410_GPIO_INPUT);
+	s3c2410_gpio_cfgpin(sp->info->pin_miso, S3C2410_GPIO_INPUT);
 
 	ret = spi_bitbang_start(&sp->bitbang);
 	if (ret)
