@@ -113,7 +113,11 @@ static int s3c2410_spigpio_probe(struct platform_device *dev)
 	platform_set_drvdata(dev, sp);
 
 	/* copy in the plkatform data */
-	sp->info = dev->dev.platform_data;
+	sp->info = dev->dev.platform_data;			/* 获取平台设备的数据，sp->info = spi_gpio_cfg */
+
+	/* 增加设置 */
+//	master->num_chipselect = 0xFFFF;			/* scan_boardinfo用到 */
+//	master->bus_num = sp->info->board_info->bus_num;
 
 	/* setup spi bitbang adaptor */
 	sp->bitbang.master = spi_master_get(master);

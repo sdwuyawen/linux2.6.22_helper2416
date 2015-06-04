@@ -152,6 +152,8 @@ static struct s3c2410_uartcfg smdk2416_uartcfgs[] __initdata = {
 };
 
 
+extern struct platform_device helper2416_gpiospi;		/* 这里不应该用声明了，因为已经EXPORT_SYMBOL了。为什么不行? */
+
 static struct platform_device *smdk2416_devices[] __initdata = {
 	
 	//&s3c_device_wdt,
@@ -164,7 +166,9 @@ static struct platform_device *smdk2416_devices[] __initdata = {
 	&s3c_device_usb,
 	&s3c_device_hsmmc0,
 	&s3c_device_hsmmc1,
-	&s3c_device_smc911x
+	&s3c_device_smc911x,
+	
+	&helper2416_gpiospi,
 };
 
 static struct s3c24xx_board smdk2416_board __initdata = {

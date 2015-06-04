@@ -35,6 +35,12 @@
 #include <asm/plat-s3c24xx/cpu.h>
 #include <asm/arch/regs-spi.h>
 
+#include <asm/arch/spi.h>
+#include <asm/arch/spi-gpio.h>
+#include <linux/spi/spi.h>
+#include <linux/spi/spi_bitbang.h>
+#include <asm/arch/regs-gpio.h>
+
 /* Serial port registrations */
 
 static struct resource s3c2410_uart0_resource[] = {
@@ -510,6 +516,54 @@ struct platform_device s3c_device_spi1 = {
 };
 
 EXPORT_SYMBOL(s3c_device_spi1);
+
+
+/* GPIO SPI */
+
+static struct spi_board_info spigpio_info_helper2416[] = 
+{
+	{
+	    	 .modalias = "spigpio_tft",  						/* 对应的spi_driver名字也是"spigpio_tft" */
+	    	 .max_speed_hz = 8000000,						/* max spi clock (SCK) speed in HZ */
+	    	 .bus_num = 0,    						 		/* jz2440里OLED接在SPI CONTROLLER 1 */
+	    	 .mode    = SPI_MODE_0,
+	    	 .chip_select   = S3C2410_GPH10, 				/* oled_cs, 它的含义由spi_master确定 */
+	    	 .platform_data = (const void *)S3C2410_GPF7 , 	/* oled_dc, 它在spi_driver里使用 */    	 
+	 },	
+};
+
+static void spi_gpio_cs(struct s3c2410_spigpio_info *spi, int cs)
+{
+	switch (cs) {
+	case BITBANG_CS_ACTIVE:
+		s3c2410_gpio_setpin(S3C2410_GPH10, 0);
+		break;
+	case BITBANG_CS_INACTIVE:
+		s3c2410_gpio_setpin(S3C2410_GPH10, 1);
+		break;
+	}
+}
+
+static struct s3c2410_spigpio_info spi_gpio_cfg = {
+	.pin_clk	= S3C2410_GPF5,
+	.pin_mosi	= S3C2410_GPG3,
+	.pin_miso	= S3C2410_GPG3,
+	.chip_select	= &spi_gpio_cs,
+	.board_size = 1,
+	.board_info = spigpio_info_helper2416,
+};
+
+
+struct platform_device helper2416_gpiospi = {
+	.name		  = "s3c24xx-spi-gpio",					/* 平台设备的名字和平台驱动的名字一致 */
+	.id		  = 1,
+	.dev = {
+		.platform_data = &spi_gpio_cfg,
+	},
+};
+
+EXPORT_SYMBOL(helper2416_gpiospi);
+
 
 /* pwm timer blocks */
 
