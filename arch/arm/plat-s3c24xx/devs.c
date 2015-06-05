@@ -532,24 +532,58 @@ static void spi_gpio_cs(struct s3c2410_spigpio_info *spi, int pin, int cs)
 	}
 }
 
+/* spi_device的信息 */
 static struct spi_board_info spigpio_info_helper2416[] = 
 {
+	{
+	    	 .modalias = "spigpio_flash",  						/* 对应的spi_driver名字也是"spigpio_tft" */
+	    	 .max_speed_hz = 8000000,						/* max spi clock (SCK) speed in HZ */
+	    	 .bus_num = 0,    						 		/* jz2440里OLED接在SPI CONTROLLER 1 */
+	    	 .mode    = SPI_MODE_0,
+//	    	 .chip_select   = S3C2410_GPH10, 				/* oled_cs, 它的含义由spi_master确定 */
+		 .chip_select   = S3C2410_GPH10, 			/* s3c2410_spigpio_probe()
+		 											->spi_new_device() 
+													{
+														snprintf(proxy->dev.bus_id, sizeof proxy->dev.bus_id,
+															"%s.%u", master->cdev.class_id,
+															chip->chip_select);
+													}	
+												会用到chip_select。所以一个spi_master下的两个不同的spi_device的
+												chip_select必须不同，否则会注册失败。
+																
+		 											*/
+	    	 .platform_data = NULL , 						/* 它在spi_driver里使用 */    	 
+	},
 	{
 	    	 .modalias = "spigpio_tft",  						/* 对应的spi_driver名字也是"spigpio_tft" */
 	    	 .max_speed_hz = 8000000,						/* max spi clock (SCK) speed in HZ */
 	    	 .bus_num = 0,    						 		/* jz2440里OLED接在SPI CONTROLLER 1 */
 	    	 .mode    = SPI_MODE_0,
-	    	 .chip_select   = S3C2410_GPH10, 				/* oled_cs, 它的含义由spi_master确定 */
+	    	 .chip_select   = 1001, 				/* oled_cs, 它的含义由spi_master确定 */
 	    	 .platform_data = (const void *)S3C2410_GPF7 , 	/* oled_dc, 它在spi_driver里使用 */    	 
-	 },	
+	 },
+	 
 };
 
+#if 0
+/* spi tft用的接线 */
 static struct s3c2410_spigpio_info spi_gpio_cfg = {
 	.pin_clk	= S3C2410_GPF5,
 	.pin_mosi	= S3C2410_GPG3,
 	.pin_miso	= S3C2410_GPG1,
 	.chip_select	= &spi_gpio_cs,
-	.board_size = 1,
+	.board_size = 2,
+	.board_info = spigpio_info_helper2416,
+};
+#endif
+
+/* spi flash用的接线 */
+static struct s3c2410_spigpio_info spi_gpio_cfg = {
+	.pin_clk	= S3C2410_GPF5,
+	.pin_mosi	= S3C2410_GPG3,
+	.pin_miso	= S3C2410_GPF7,
+	.chip_select	= &spi_gpio_cs,
+	.board_size = 2,
 	.board_info = spigpio_info_helper2416,
 };
 

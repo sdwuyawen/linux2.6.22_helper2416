@@ -113,7 +113,7 @@ static int s3c2410_spigpio_probe(struct platform_device *dev)
 	platform_set_drvdata(dev, sp);				/* 平台设备dev的驱动数据设置为sp,((_dev)->dev).driver_data = sp */
 
 	/* copy in the platform data */
-	sp->info = dev->dev.platform_data;			/* 获取平台设备的数据，sp->info = spi_gpio_cfg */
+	sp->info = dev->dev.platform_data;			/* 获取平台设备的数据，里面是spi_device的信息。sp->info = spi_gpio_cfg */
 
 	/* 增加设置 */
 //	master->num_chipselect = 0xFFFF;				/* scan_boardinfo用到 */
@@ -148,8 +148,13 @@ static int s3c2410_spigpio_probe(struct platform_device *dev)
 			 sp->info->board_info[i].modalias);
 
 		sp->info->board_info[i].controller_data = sp;
+
+		printk("call  spi_new_device\n");
 		spi_new_device(master, sp->info->board_info + i);	/* 根据devs.c中的spi_gpio_cfg创建spi_device，spi_device根据名字去匹配spi_driver */
+		printk("return from spi_new_device\n");
 	}
+
+	printk("end of %s\n", __FUNCTION__);
 
 	return 0;
 
@@ -191,7 +196,8 @@ static struct platform_driver s3c2410_spigpio_drv = {
 
 static int __init s3c2410_spigpio_init(void)
 {
-        return platform_driver_register(&s3c2410_spigpio_drv);
+	printk("%s\n", __FUNCTION__);
+       return platform_driver_register(&s3c2410_spigpio_drv);
 }
 
 static void __exit s3c2410_spigpio_exit(void)

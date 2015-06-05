@@ -225,6 +225,7 @@ struct spi_device *spi_new_device(struct spi_master *master,
 	proxy->irq = chip->irq;
 	proxy->modalias = chip->modalias;
 
+	/* spi_s3c24xx_gpio.c调用这里有问题 */
 	snprintf(proxy->dev.bus_id, sizeof proxy->dev.bus_id,
 			"%s.%u", master->cdev.class_id,
 			chip->chip_select);
