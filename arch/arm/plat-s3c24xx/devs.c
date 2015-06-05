@@ -520,14 +520,14 @@ EXPORT_SYMBOL(s3c_device_spi1);
 
 /* GPIO SPI */
 
-static void spi_gpio_cs(struct s3c2410_spigpio_info *spi, int cs)
+static void spi_gpio_cs(struct s3c2410_spigpio_info *spi, int pin, int cs)
 {
 	switch (cs) {
 	case BITBANG_CS_ACTIVE:
-		s3c2410_gpio_setpin(S3C2410_GPH10, 0);
+		s3c2410_gpio_setpin(pin, 0);
 		break;
 	case BITBANG_CS_INACTIVE:
-		s3c2410_gpio_setpin(S3C2410_GPH10, 1);
+		s3c2410_gpio_setpin(pin, 1);
 		break;
 	}
 }

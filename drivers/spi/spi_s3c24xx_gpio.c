@@ -91,7 +91,7 @@ static void s3c2410_spigpio_chipselect(struct spi_device *dev, int value)
 	struct s3c2410_spigpio *sg = spidev_to_sg(dev);
 
 	if (sg->info && sg->info->chip_select)
-		(sg->info->chip_select)(sg->info, value);
+		(sg->info->chip_select)(sg->info, dev->chip_select, value);
 }
 
 static int s3c2410_spigpio_probe(struct platform_device *dev)
@@ -148,7 +148,7 @@ static int s3c2410_spigpio_probe(struct platform_device *dev)
 			 sp->info->board_info[i].modalias);
 
 		sp->info->board_info[i].controller_data = sp;
-		spi_new_device(master, sp->info->board_info + i);
+		spi_new_device(master, sp->info->board_info + i);	/* 根据devs.c中的spi_gpio_cfg创建spi_device，spi_device根据名字去匹配spi_driver */
 	}
 
 	return 0;
