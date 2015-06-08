@@ -879,10 +879,14 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 	/* 4. Set SPI INT_EN register */
 
 //	if (msg->wbuf)
-		spi_inten = SPI_INT_TX_FIFORDY_EN|SPI_INT_TX_UNDERRUN_EN|SPI_INT_TX_OVERRUN_EN;
+//		spi_inten = SPI_INT_TX_FIFORDY_EN|SPI_INT_TX_UNDERRUN_EN|SPI_INT_TX_OVERRUN_EN;
 //	if (msg->rbuf){
-		spi_inten = SPI_INT_RX_FIFORDY_EN|SPI_INT_RX_UNDERRUN_EN|SPI_INT_RX_OVERRUN_EN|SPI_INT_TRAILING_EN;
+//		spi_inten = SPI_INT_RX_FIFORDY_EN|SPI_INT_RX_UNDERRUN_EN|SPI_INT_RX_OVERRUN_EN|SPI_INT_TRAILING_EN;
 //	}
+
+//	spi_inten = SPI_INT_TX_FIFORDY_EN|SPI_INT_RX_FIFORDY_EN|SPI_INT_TX_UNDERRUN_EN|SPI_INT_TX_OVERRUN_EN|SPI_INT_RX_UNDERRUN_EN|SPI_INT_RX_OVERRUN_EN|SPI_INT_TRAILING_EN;
+//	spi_inten = SPI_INT_TX_UNDERRUN_EN|SPI_INT_TX_OVERRUN_EN|SPI_INT_RX_UNDERRUN_EN|SPI_INT_RX_OVERRUN_EN|SPI_INT_TRAILING_EN;
+	spi_inten = 0;
 	writel(spi_inten, info->reg_base + S3C_SPI_INT_EN);
 
 	writel(0x1f, info->reg_base + S3C_PENDING_CLR);
@@ -941,6 +945,66 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 }
 
 
+static int s3c2416_spi_enable_txfifolevel_int(struct spi_master *master)
+{
+	struct s3c_spi_info *info;
+	unsigned int regval;
+
+	info = spi_master_get_devdata(master);
+
+	regval = readl(info->reg_base + S3C_SPI_INT_EN);
+	regval |= SPI_INT_TX_FIFORDY_EN;
+
+	writel(regval, info->reg_base + S3C_SPI_INT_EN);	
+
+	return 0;
+}
+
+static int s3c2416_spi_disable_txfifolevel_int(struct spi_master *master)
+{
+	struct s3c_spi_info *info;
+	unsigned int regval;
+
+	info = spi_master_get_devdata(master);
+
+	regval = readl(info->reg_base + S3C_SPI_INT_EN);
+	regval &= ~SPI_INT_TX_FIFORDY_EN;
+
+	writel(regval, info->reg_base + S3C_SPI_INT_EN);	
+
+	return 0;
+}
+
+static int s3c2416_spi_enable_rxfifolevel_int(struct spi_master *master)
+{
+	struct s3c_spi_info *info;
+	unsigned int regval;
+
+	info = spi_master_get_devdata(master);
+
+	regval = readl(info->reg_base + S3C_SPI_INT_EN);
+	regval |= SPI_INT_RX_FIFORDY_EN;
+
+	writel(regval, info->reg_base + S3C_SPI_INT_EN);
+
+	return 0;
+}
+
+static int s3c2416_spi_disable_rxfifolevel_int(struct spi_master *master)
+{
+	struct s3c_spi_info *info;
+	unsigned int regval;
+
+	info = spi_master_get_devdata(master);
+
+	regval = readl(info->reg_base + S3C_SPI_INT_EN);
+	regval &= ~SPI_INT_RX_FIFORDY_EN;
+
+	writel(regval, info->reg_base + S3C_SPI_INT_EN);	
+
+	return 0;
+}
+
 static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg)
 {
 	struct spi_master *master = spi->master;
@@ -948,6 +1012,8 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	struct spi_transfer	*t = NULL;
 
 	info = spi_master_get_devdata(master);
+
+	DEBUG;
 
 	/* 1. 选中芯片 */
 	s3c2410_gpio_setpin(spi->chip_select, 0);  /* 默认为低电平选中 */
@@ -967,18 +1033,37 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 
 		if (t->tx_buf)
 		{
+			DEBUG;
 			/* 发送 */
 			writeb(((unsigned char *)t->tx_buf)[0], info->reg_base + S3C_SPI_TX_DATA);
 
+			DEBUG;
+			
+			/* 允许TX FIFO LEVEL中断 */
+			s3c2416_spi_enable_txfifolevel_int(master);
 			/* 它会触发中断 */
+
+			DEBUG;
+			print_reg(spi);
+
+			while((readl(info->reg_base + S3C_SPI_STATUS) & 0x01) == 0x00)
+			{
+				msleep(1000);
+				DEBUG;
+				print_reg(spi);
+			}
 
 			/* 休眠 */
 			wait_for_completion(&info->done);
 		}
 		else if(t->rx_buf)
 		{
+			DEBUG;
 			/* 接收 */
-			writeb(0xff, info->reg_base + S3C_SPI_RX_DATA);
+			writeb(0xff, info->reg_base + S3C_SPI_TX_DATA);
+
+			/* 允许RX FIFO LEVEL中断 */
+			s3c2416_spi_enable_rxfifolevel_int(master);
 			/* 它会触发中断 */
 
 			/* 休眠 */
@@ -986,6 +1071,8 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 		}
 	}
 
+	DEBUG;
+	
 	/* 2.3 唤醒等待的进程 */
 	mesg->status = 0;
 	mesg->complete(mesg->context);    
@@ -1011,6 +1098,22 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 	struct s3c_spi_info *info = spi_master_get_devdata(master);
 	struct spi_transfer *t = info->cur_t;	
 
+	DEBUG;
+	
+	if (!t)
+	{
+		printk("spi status = 0x%x\n",readl(info->reg_base + S3C_SPI_STATUS));
+
+		/* disable rx and tx int */
+//		s3c2416_spi_disable_txfifolevel_int(master);
+//		s3c2416_spi_disable_rxfifolevel_int(master);
+		
+		/* 误触发 */
+		return IRQ_HANDLED;            
+	}
+
+	DEBUG;
+
 	spi_sts = readl(info->reg_base + S3C_SPI_STATUS);
 
 	if (spi_sts & SPI_STUS_RX_OVERRUN_ERR) {
@@ -1035,14 +1138,23 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 	pr_debug("spi status = 0x%x\n",readl(info->reg_base + S3C_SPI_STATUS));
 //	spi_s3c_irq_nextbyte(spi, spi_sts);
 
+	DEBUG;
+
 	if (t->tx_buf) /* 是发送 */
 	{
 		info->cur_cnt++;
 
 		if (info->cur_cnt < t->len)/* 没发完? */
-			writeb(((unsigned char *)t->tx_buf)[info->cur_cnt], info->reg_base + S3C_SPI_TX_DATA);        
+		{
+			DEBUG;
+			writeb(((unsigned char *)t->tx_buf)[info->cur_cnt], info->reg_base + S3C_SPI_TX_DATA); 
+		}     
 		else
+		{
+			DEBUG;
+			s3c2416_spi_disable_txfifolevel_int(master);		/* disable txfifo int */
 			complete(&info->done); /* 唤醒 */
+		}	
 	}
 	else /* 接收 */
 	{
@@ -1051,9 +1163,16 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 		info->cur_cnt++;
 
 		if (info->cur_cnt < t->len)/* 没收完? */
-			writeb(0xff, info->reg_base + S3C2410_SPTDAT);        
+		{
+			DEBUG;
+			writeb(0xff, info->reg_base + S3C_SPI_TX_DATA); 
+		}     
 		else
+		{
+			DEBUG;
+			s3c2416_spi_disable_rxfifolevel_int(master);		/* disable rxfifo int */
 			complete(&info->done); /* 唤醒 */
+		}
 	}
 
 	return IRQ_HANDLED;
@@ -1225,7 +1344,18 @@ out:
 	return ret;
 #endif
 
+	struct clk *clk;
+
 	printk("s3c_spi_probe\r\n");
+
+	clk = clk_get(&pdev->dev, "spi");
+
+	if (IS_ERR(clk)) 
+	{
+		dev_err(&pdev->dev, "cannot get spi clock\n");
+	}
+
+	clk_enable(clk);
 
 	/* don't try to register spi_master with the same bus_num ! */
 	spi0_controller = create_spi_master_s3c2416(pdev, 100, 0x52000000, IRQ_SPI0);

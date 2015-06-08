@@ -605,12 +605,12 @@ EXPORT_SYMBOL(helper2416_gpiospi);
 static struct spi_board_info hspi_info_helper2416[] = 
 {
 	{
-	    	 .modalias = "hspi_device",  						/* 对应的spi_driver名字也是"spigpio_tft" */
+	    	 .modalias = "hspi_mcp2515",  						/* 对应的spi_driver名字也是"spigpio_tft" */
 	    	 .max_speed_hz = 8000000,						/* max spi clock (SCK) speed in HZ */
 	    	 .bus_num = 0,    						 		/* jz2440里OLED接在SPI CONTROLLER 1 */
 	    	 .mode    = SPI_MODE_0,
 												/* oled_cs, 它的含义由spi_master确定 */
-		 .chip_select   = 0x1234, 			/* s3c2410_spigpio_probe()
+		 .chip_select   = S3C2410_GPH9, 			/* s3c2410_spigpio_probe()
 		 											->spi_new_device() 
 													{
 														snprintf(proxy->dev.bus_id, sizeof proxy->dev.bus_id,
