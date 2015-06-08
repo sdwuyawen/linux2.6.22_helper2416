@@ -796,7 +796,7 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 	unsigned int spi_inten= 0;
 	unsigned int spi_packet=0;
 
-	unsigned int prescaler = 5;
+	unsigned int prescaler = 250;
 	unsigned int spi_clkcfg = 0;
 	unsigned int spi_modecfg = 0 ;
 
@@ -807,6 +807,8 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 
 	/* initialise the spi controller */
 //	s3c_spi_hw_init(spi);
+	/* 硬件初始化，主要是初始化EPLL，和CLK,MISO,MOSI引脚 */
+	s3c2416_spi_controler_init(0, info);
 
 	/* 1. Set transfer type (CPOL & CPHA set) */
 	spi_chcfg = 0;
@@ -938,6 +940,18 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 	spi_slavecfg |= (0x3f << 4);
 	writel(spi_slavecfg, spi->regs + S3C_SLAVE_SEL);
 #endif
+
+	/* 7. Set nSS low to start Tx or Rx operation */
+	spi_slavecfg = readl(info->reg_base + S3C_SLAVE_SEL);
+	spi_slavecfg |= SPI_SLAVE_SIG_INACT;		/* 手动控制SS引脚时，SS置1 */
+	spi_slavecfg &= ~SPI_SLAVE_AUTO;			/* 手动控制SS引脚 */
+	spi_slavecfg |= (0x3f << 4);
+	writel(spi_slavecfg, info->reg_base + S3C_SLAVE_SEL);
+
+	spi_slavecfg = readl(info->reg_base + S3C_SLAVE_SEL);
+	spi_slavecfg &= ~SPI_SLAVE_SIG_INACT;		/* 手动控制SS引脚时，SS置0 */
+	spi_slavecfg &= ~SPI_SLAVE_AUTO;			/* 手动控制SS引脚 */
+	writel(spi_slavecfg, info->reg_base + S3C_SLAVE_SEL);
 
 	print_reg(spi);
 
