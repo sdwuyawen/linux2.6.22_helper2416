@@ -27,5 +27,11 @@ struct s3c2410_spigpio_info {
 	void (*chip_select)(struct s3c2410_spigpio_info *spi, int pin, int cs);
 };
 
+/* Temporarily put it here */
+struct s3c2416_hspi_info 
+{
+	unsigned long		 board_size;
+	struct spi_board_info	*board_info;
+};
 
 #endif /* __ASM_ARCH_SPIGPIO_H */

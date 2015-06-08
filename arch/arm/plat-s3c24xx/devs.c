@@ -599,6 +599,67 @@ struct platform_device helper2416_gpiospi = {
 EXPORT_SYMBOL(helper2416_gpiospi);
 
 
+/* HSPI */
+
+/* spi_device的信息 */
+static struct spi_board_info hspi_info_helper2416[] = 
+{
+	{
+	    	 .modalias = "hspi_device",  						/* 对应的spi_driver名字也是"spigpio_tft" */
+	    	 .max_speed_hz = 8000000,						/* max spi clock (SCK) speed in HZ */
+	    	 .bus_num = 0,    						 		/* jz2440里OLED接在SPI CONTROLLER 1 */
+	    	 .mode    = SPI_MODE_0,
+												/* oled_cs, 它的含义由spi_master确定 */
+		 .chip_select   = 0x1234, 			/* s3c2410_spigpio_probe()
+		 											->spi_new_device() 
+													{
+														snprintf(proxy->dev.bus_id, sizeof proxy->dev.bus_id,
+															"%s.%u", master->cdev.class_id,
+															chip->chip_select);
+													}	
+												会用到chip_select。所以一个spi_master下的两个不同的spi_device的
+												chip_select必须不同，否则会注册失败。
+																
+		 											*/
+	    	 .platform_data = NULL , 						/* 它在spi_driver里使用 */    	 
+	},
+};
+
+
+static struct s3c2416_hspi_info hspi_cfg = {
+	.board_size = 1,
+	.board_info = hspi_info_helper2416,
+};
+
+static struct resource s3c_hspi0_resource[] = {
+	[0] = {
+		.start = S3C24XX_PA_SPI,
+		.end   = S3C24XX_PA_SPI + 0x1f,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_SPI0,
+		.end   = IRQ_SPI0,
+		.flags = IORESOURCE_IRQ,
+	}
+
+};
+
+static u64 s3c_device_hspi0_dmamask = 0xffffffffUL;
+
+struct platform_device s3c_device_hspi0 = {
+	.name		  = "s3c2416-hspi",
+	.id		  = 0,
+	.num_resources	  = ARRAY_SIZE(s3c_hspi0_resource),
+	.resource	  = s3c_hspi0_resource,
+        .dev              = {
+                .dma_mask = &s3c_device_hspi0_dmamask,
+                .coherent_dma_mask = 0xffffffffUL,
+                .platform_data = &hspi_cfg,
+        }
+};
+EXPORT_SYMBOL(s3c_device_hspi0);
+
 /* pwm timer blocks */
 
 static struct resource s3c_timer0_resource[] = {
