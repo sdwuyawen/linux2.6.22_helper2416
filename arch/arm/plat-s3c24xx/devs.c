@@ -610,7 +610,9 @@ static struct spi_board_info hspi_info_helper2416[] =
 	    	 .bus_num = 0,    						 		/* jz2440里OLED接在SPI CONTROLLER 1 */
 	    	 .mode    = SPI_MODE_0,
 												/* oled_cs, 它的含义由spi_master确定 */
-		 .chip_select   = S3C2410_GPH9, 			/* s3c2410_spigpio_probe()
+//		 .chip_select   = S3C2410_GPL13, 	
+		 .chip_select   = 0, 						/* master查表转换 */
+		 										/* s3c2410_spigpio_probe()
 		 											->spi_new_device() 
 													{
 														snprintf(proxy->dev.bus_id, sizeof proxy->dev.bus_id,
@@ -621,7 +623,7 @@ static struct spi_board_info hspi_info_helper2416[] =
 												chip_select必须不同，否则会注册失败。
 																
 		 											*/
-	    	 .platform_data = NULL , 						/* 它在spi_driver里使用 */    	 
+	    	 .platform_data = (void *)S3C2410_GPH9 , 						/* 它在spi_driver里使用 */    	 
 	},
 };
 

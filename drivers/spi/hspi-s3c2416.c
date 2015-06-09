@@ -691,6 +691,7 @@ void print_reg(struct spi_device *spi)
 static int s3c2416_spi_controler_init(int which, struct s3c_spi_info *info)
 {
 	int ret = 0;
+	int i;
 
 	/* whick clock should I enable? */
 #if 0
@@ -757,7 +758,17 @@ static int s3c2416_spi_controler_init(int which, struct s3c_spi_info *info)
 		*/
 		s3c2410_gpio_cfgpin(S3C2410_GPE11, S3C2410_GPE11_SPIMISO0);
 		s3c2410_gpio_cfgpin(S3C2410_GPE12, S3C2410_GPE12_SPIMOSI0);
-		s3c2410_gpio_cfgpin(S3C2410_GPE13, S3C2410_GPE13_SPICLK0);        
+		s3c2410_gpio_cfgpin(S3C2410_GPE13, S3C2410_GPE13_SPICLK0);
+
+		/* set ss pins output mode */
+		for(i = 0; i < ARRAY_SIZE(info->devinfo->ss_talbes); i++)
+		{
+			if(info->devinfo->ss_talbes[i] != 0)
+			{
+				s3c2410_gpio_cfgpin(info->devinfo->ss_talbes[i], S3C2410_GPIO_OUTPUT);
+//				s3c2410_gpio_setpin(info->devinfo->ss_talbes[i], 1);
+			}
+		}
 	}
 	else if (which == 1)
 	{
@@ -1033,8 +1044,9 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 
 	DEBUG;
 
+	printk("info->devinfo->ss_talbes[spi->chip_select] = %x\r\n", info->devinfo->ss_talbes[spi->chip_select]);
 	/* 1. 选中芯片 */
-	s3c2410_gpio_setpin(spi->chip_select, 0);  /* 默认为低电平选中 */
+	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 0);  /* 默认为低电平选中 */
 
 	/* 2. 发数据 */
 
@@ -1106,7 +1118,7 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	mesg->complete(mesg->context);    
 
 	/* 3. 取消片选 */
-	s3c2410_gpio_setpin(spi->chip_select, 1);  /* 默认为低电平选中 */
+//	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 1);  /* 默认为低电平选中 */
 
 	return 0;
 }
@@ -1181,14 +1193,18 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 		{
 			DEBUG;
 			s3c2416_spi_disable_txfifolevel_int(master);		/* disable txfifo int */
+			mdelay(1);
 			complete(&info->done); /* 唤醒 */
 		}	
 	}
 	else /* 接收 */
 	{
 		/* 读/存数据 */
-		((unsigned char *)t->rx_buf)[info->cur_cnt] = readb(info->reg_base + S3C_SPI_RX_DATA);
-		info->cur_cnt++;
+		if(info->cur_cnt < t->len)
+		{
+			((unsigned char *)t->rx_buf)[info->cur_cnt] = readb(info->reg_base + S3C_SPI_RX_DATA);
+			info->cur_cnt++;
+		}
 
 		if (info->cur_cnt < t->len)/* 没收完? */
 		{
@@ -1231,6 +1247,10 @@ static struct spi_master *create_spi_master_s3c2416(struct platform_device *pdev
 	info->irq = irq;
 	info->devinfo = pdev->dev.platform_data;
 
+	/* set SS pin sets */
+	memset(info->devinfo->ss_talbes, 0 ,sizeof(info->devinfo->ss_talbes));
+	info->devinfo->ss_talbes[0] = S3C2410_GPL13;
+
 	DEBUG;
 
 	/* 硬件初始化，主要是初始化EPLL，和CLK,MISO,MOSI引脚 */
@@ -1238,7 +1258,7 @@ static struct spi_master *create_spi_master_s3c2416(struct platform_device *pdev
 
 	DEBUG;
 
-	ret = request_irq(irq, s3c2416_spi_irq, 0, "s3c2416_spi", master);
+	ret = request_irq(irq, s3c2416_spi_irq, IRQF_DISABLED, "s3c2416_spi", master);
 
 	DEBUG;
 

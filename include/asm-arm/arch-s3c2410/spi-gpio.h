@@ -32,6 +32,7 @@ struct s3c2416_hspi_info
 {
 	unsigned long		 board_size;
 	struct spi_board_info	*board_info;
+	unsigned long 	ss_talbes[6];
 };
 
 #endif /* __ASM_ARCH_SPIGPIO_H */
