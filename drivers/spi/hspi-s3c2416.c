@@ -725,7 +725,8 @@ static int s3c2416_spi_controler_init(int which, struct s3c_spi_info *info)
 	/*Enable PCLK into the HS SPI*/
 	writel(readl(S3C2443_PCLKCON)|(1<<6), S3C2443_PCLKCON);
 
-	clk_enable(spi->clk);
+	clk_enable(clk_get(NULL, "spi"));
+//	clk_enable(spi->clk);
 
 #elif defined CONFIG_SPICLK_EPLL
 	/* implemetation when use EPLL clock */
@@ -1271,6 +1272,11 @@ static struct spi_master *create_spi_master_s3c2416(struct platform_device *pdev
 	/* set SS pin sets */
 	memset(info->devinfo->ss_talbes, 0 ,sizeof(info->devinfo->ss_talbes));
 	info->devinfo->ss_talbes[0] = S3C2410_GPL13;
+	info->devinfo->ss_talbes[1] = 0;
+	info->devinfo->ss_talbes[2] = 0;
+	info->devinfo->ss_talbes[3] = 0;
+	info->devinfo->ss_talbes[4] = 0;
+	info->devinfo->ss_talbes[5] = 0;
 
 	DEBUG;
 

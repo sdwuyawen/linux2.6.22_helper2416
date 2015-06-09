@@ -26,7 +26,8 @@
 #include <asm/dma.h>
 #include <asm/arch/dma.h>
 
-#define CONFIG_SPICLK_EPLL		//SPICLK use EPLL
+//#define CONFIG_SPICLK_EPLL		//SPICLK use EPLL
+#define CONFIG_SPICLK_PCLK		//SPICLK use PCLK
 #define SPI_CHANNEL 			0
 
 
