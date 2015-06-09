@@ -1272,7 +1272,7 @@ static struct spi_master *create_spi_master_s3c2416(struct platform_device *pdev
 	/* set SS pin sets */
 	memset(info->devinfo->ss_talbes, 0 ,sizeof(info->devinfo->ss_talbes));
 	info->devinfo->ss_talbes[0] = S3C2410_GPL13;
-	info->devinfo->ss_talbes[1] = 0;
+	info->devinfo->ss_talbes[1] = S3C2410_GPH10;
 	info->devinfo->ss_talbes[2] = 0;
 	info->devinfo->ss_talbes[3] = 0;
 	info->devinfo->ss_talbes[4] = 0;
