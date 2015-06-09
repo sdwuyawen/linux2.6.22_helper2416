@@ -654,7 +654,7 @@ struct s3c_spi_info
 	struct completion	 done;
 	struct spi_transfer *cur_t;
 	int cur_cnt;
-	struct spi_device *cur_dev;		//for debug
+//	struct spi_device *cur_dev;		//for debug
 };
 
 
@@ -1043,7 +1043,7 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 
 	info = spi_master_get_devdata(master);
 
-	info->cur_dev = spi;		/* for debug */
+//	info->cur_dev = spi;		/* for debug */
 
 	DEBUG;
 
@@ -1121,7 +1121,7 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	mesg->complete(mesg->context);    
 
 	/* 3. 取消片选 */
-//	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 1);  /* 默认为低电平选中 */
+	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 1);  /* 默认为低电平选中 */
 
 	return 0;
 }
