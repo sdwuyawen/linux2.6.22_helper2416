@@ -767,7 +767,7 @@ static int s3c2416_spi_controler_init(int which, struct s3c_spi_info *info)
 			if(info->devinfo->ss_talbes[i] != 0)
 			{
 				s3c2410_gpio_cfgpin(info->devinfo->ss_talbes[i], S3C2410_GPIO_OUTPUT);
-//				s3c2410_gpio_setpin(info->devinfo->ss_talbes[i], 1);
+				s3c2410_gpio_setpin(info->devinfo->ss_talbes[i], 1);
 			}
 		}
 	}
@@ -1047,14 +1047,18 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 
 	DEBUG;
 
+	/* 0. 发送第1个spi_transfer之前setup，会把master上所有的SS脚置1，所以必须放在片选之前进行 */
+	master->setup(spi);
+
 //	printk("info->devinfo->ss_talbes[spi->chip_select] = %x\r\n", info->devinfo->ss_talbes[spi->chip_select]);
+
 	/* 1. 选中芯片 */
 	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 0);  /* 默认为低电平选中 */
 
 	/* 2. 发数据 */
 
 	/* 2.1 发送第1个spi_transfer之前setup */
-	master->setup(spi);
+//	master->setup(spi);
 
 	/* 2.2 从spi_message中逐个取出spi_transfer,执行它 */
 	list_for_each_entry (t, &mesg->transfers, transfer_list) 
