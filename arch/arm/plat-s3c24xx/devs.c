@@ -651,6 +651,14 @@ static struct spi_board_info hspi_info_helper2416[] =
 static struct s3c2416_hspi_info hspi_cfg = {
 	.board_size = 2,
 	.board_info = hspi_info_helper2416,
+	.ss_talbes = {
+		S3C2410_GPL13,
+		S3C2410_GPH10,
+		0,
+		0,
+		0,
+		0
+	},
 };
 
 static struct resource s3c_hspi0_resource[] = {

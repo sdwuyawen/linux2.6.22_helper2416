@@ -658,7 +658,7 @@ struct s3c_spi_info
 };
 
 
-#if 1
+#if 0
 #undef debug
 #else
 #define debug
@@ -1056,6 +1056,7 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	/* 1. 选中芯片 */
 	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 0);  /* 默认为低电平选中 */
 
+	udelay(100);
 	/* 2. 发数据 */
 
 	/* 2.1 发送第1个spi_transfer之前setup */
@@ -1106,6 +1107,8 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 				print_reg(spi);
 				dummy = readb(info->reg_base + S3C_SPI_RX_DATA);
 			}
+
+			printk("S3C_SPI_STATUS = 0x%08x\n",readl(info->reg_base + S3C_SPI_STATUS));
 			
 			/* 接收 */
 			writeb(0xff, info->reg_base + S3C_SPI_TX_DATA);
@@ -1125,6 +1128,8 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	mesg->status = 0;
 	mesg->complete(mesg->context);    
 
+	udelay(100);
+	
 	/* 3. 取消片选 */
 	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 1);  /* 默认为低电平选中 */
 
@@ -1190,6 +1195,12 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 
 	if (t->tx_buf) /* 是发送 */
 	{
+//		while((readl(info->reg_base + S3C_SPI_STATUS) & (0x01)) == 0x00)
+		while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 6)) != 0x00)
+		{
+//			goto out;
+		}
+		
 		info->cur_cnt++;
 
 		if (info->cur_cnt < t->len)/* 没发完? */
@@ -1213,7 +1224,7 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 				
 			}
 			/* all bytes have been translated here */
-			
+//			udelay(200);
 //			mdelay(1);
 //			print_reg(info->cur_dev);
 			complete(&info->done); /* 唤醒 */
@@ -1221,6 +1232,14 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 	}
 	else /* 接收 */
 	{
+		if((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13)) == 0x00)
+		{
+			goto out;
+		}
+//		while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13)) == 0x00)
+//		{
+//			goto out;
+//		}
 		/* 读/存数据 */
 		if(info->cur_cnt < t->len)
 		{
@@ -1241,6 +1260,7 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 		}
 	}
 
+out:
 	return IRQ_HANDLED;
 }
 
@@ -1269,6 +1289,7 @@ static struct spi_master *create_spi_master_s3c2416(struct platform_device *pdev
 	info->irq = irq;
 	info->devinfo = pdev->dev.platform_data;
 
+#if 0
 	/* set SS pin sets */
 	memset(info->devinfo->ss_talbes, 0 ,sizeof(info->devinfo->ss_talbes));
 	info->devinfo->ss_talbes[0] = S3C2410_GPL13;
@@ -1277,6 +1298,7 @@ static struct spi_master *create_spi_master_s3c2416(struct platform_device *pdev
 	info->devinfo->ss_talbes[3] = 0;
 	info->devinfo->ss_talbes[4] = 0;
 	info->devinfo->ss_talbes[5] = 0;
+#endif
 
 	DEBUG;
 
