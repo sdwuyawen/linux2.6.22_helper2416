@@ -654,10 +654,11 @@ struct s3c_spi_info
 	struct completion	 done;
 	struct spi_transfer *cur_t;
 	int cur_cnt;
+	struct spi_device *cur_dev;		//for debug
 };
 
 
-#if 0
+#if 1
 #undef debug
 #else
 #define debug
@@ -1042,9 +1043,11 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 
 	info = spi_master_get_devdata(master);
 
+	info->cur_dev = spi;		/* for debug */
+
 	DEBUG;
 
-	printk("info->devinfo->ss_talbes[spi->chip_select] = %x\r\n", info->devinfo->ss_talbes[spi->chip_select]);
+//	printk("info->devinfo->ss_talbes[spi->chip_select] = %x\r\n", info->devinfo->ss_talbes[spi->chip_select]);
 	/* 1. 选中芯片 */
 	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 0);  /* 默认为低电平选中 */
 
@@ -1091,7 +1094,7 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 		{
 			DEBUG;
 
-			/* 清空接收FIFO */
+			/* 开始接收前清空接收FIFO */
 			while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13)) != 0x00)
 			{
 				DEBUG;
@@ -1175,7 +1178,7 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 	/* pretty much this leaves us with the fact that we've
 	 * transmitted or received whatever byte we last sent */
 
-	pr_debug("spi status = 0x%x\n",readl(info->reg_base + S3C_SPI_STATUS));
+//	pr_debug("spi status = 0x%x\n",readl(info->reg_base + S3C_SPI_STATUS));
 //	spi_s3c_irq_nextbyte(spi, spi_sts);
 
 	DEBUG;
@@ -1193,7 +1196,21 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 		{
 			DEBUG;
 			s3c2416_spi_disable_txfifolevel_int(master);		/* disable txfifo int */
-			mdelay(1);
+
+			/* wait for txfifo becomes empty */
+			while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 6)) != 0x00)
+			{
+				
+			}
+			/* wait for shift register becomes empty */
+			while((readl(info->reg_base + S3C_SPI_STATUS) & (1 << 21)) == 0x00)
+			{
+				
+			}
+			/* all bytes have been translated here */
+			
+//			mdelay(1);
+//			print_reg(info->cur_dev);
 			complete(&info->done); /* 唤醒 */
 		}	
 	}
