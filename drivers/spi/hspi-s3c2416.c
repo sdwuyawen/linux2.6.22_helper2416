@@ -802,6 +802,8 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 
 	int div;
 
+	DEBUG;
+
 	info = spi_master_get_devdata(spi->master);
 //	clk = clk_get(NULL, "plck");
 
@@ -948,6 +950,7 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 	spi_slavecfg |= (0x3f << 4);
 	writel(spi_slavecfg, info->reg_base + S3C_SLAVE_SEL);
 
+	/* fatal: 手动模式时，发送数据前必须清0 bit0,否则数据不会发送 */
 	spi_slavecfg = readl(info->reg_base + S3C_SLAVE_SEL);
 	spi_slavecfg &= ~SPI_SLAVE_SIG_INACT;		/* 手动控制SS引脚时，SS置0 */
 	spi_slavecfg &= ~SPI_SLAVE_AUTO;			/* 手动控制SS引脚 */
@@ -1024,6 +1027,7 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	struct spi_master *master = spi->master;
 	struct s3c_spi_info *info;
 	struct spi_transfer	*t = NULL;
+	volatile unsigned char dummy;
 
 	info = spi_master_get_devdata(master);
 
@@ -1059,13 +1063,14 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 
 			DEBUG;
 			print_reg(spi);
-
+#if 0
 			while((readl(info->reg_base + S3C_SPI_STATUS) & 0x01) == 0x00)
 			{
 				msleep(1000);
 				DEBUG;
 				print_reg(spi);
 			}
+#endif
 
 			/* 休眠 */
 			wait_for_completion(&info->done);
@@ -1073,6 +1078,15 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 		else if(t->rx_buf)
 		{
 			DEBUG;
+
+			/* 清空接收FIFO */
+			while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13)) != 0x00)
+			{
+				DEBUG;
+				print_reg(spi);
+				dummy = readb(info->reg_base + S3C_SPI_RX_DATA);
+			}
+			
 			/* 接收 */
 			writeb(0xff, info->reg_base + S3C_SPI_TX_DATA);
 
