@@ -658,7 +658,7 @@ struct s3c_spi_info
 };
 
 
-#if 0
+#if 1
 #undef debug
 #else
 #define debug
@@ -688,6 +688,7 @@ void print_reg(struct spi_device *spi)
 {
 }
 #endif
+
 
 static int s3c2416_spi_controler_init(int which, struct s3c_spi_info *info)
 {
@@ -798,6 +799,53 @@ static int s3c2416_spi_controler_init(int which, struct s3c_spi_info *info)
 	return ret;
 }
 
+static void flush_fifo(struct spi_device *spi)
+{
+	struct s3c_spi_info *info;
+	unsigned long val;
+
+	info = spi_master_get_devdata(spi->master);
+	
+	writel(0, info->reg_base + S3C_PACKET_CNT);
+
+	val = readl(info->reg_base + S3C_CH_CFG);
+	val &= ~(SPI_CH_RXCH_ON | SPI_CH_TXCH_ON);
+	writel(val, info->reg_base + S3C_CH_CFG);
+
+	val = readl(info->reg_base + S3C_CH_CFG);
+	val |= SPI_CH_SW_RST;
+	writel(val, info->reg_base + S3C_CH_CFG);
+#if 0
+	/* Flush TxFIFO*/
+	do {
+		val = readl(regs + S3C64XX_SPI_STATUS);
+	} while (TX_FIFO_LVL(val, sci) && loops--);
+
+	if (loops == 0)
+		dev_warn(&sdd->pdev->dev, "Timed out flushing TX FIFO\n");
+
+	/* Flush RxFIFO*/
+	loops = msecs_to_loops(1);
+	do {
+		val = readl(regs + S3C64XX_SPI_STATUS);
+		if (RX_FIFO_LVL(val, sci))
+			readl(regs + S3C64XX_SPI_RX_DATA);
+		else
+			break;
+	} while (loops--);
+
+	if (loops == 0)
+		dev_warn(&sdd->pdev->dev, "Timed out flushing RX FIFO\n");
+#endif
+	val = readl(info->reg_base + S3C_CH_CFG);
+	val &= ~SPI_CH_SW_RST;
+	writel(val, info->reg_base + S3C_CH_CFG);
+
+	val = readl(info->reg_base + S3C_MODE_CFG);
+	val &= ~(SPI_MODE_TXDMA_ON | SPI_MODE_RXDMA_ON);
+	writel(val, info->reg_base + S3C_MODE_CFG);
+}
+
 
 static int s3c2416_spi_setup(struct spi_device *spi)
 {
@@ -819,6 +867,8 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 
 	info = spi_master_get_devdata(spi->master);
 //	clk = clk_get(NULL, "plck");
+
+	flush_fifo(spi);
 
 	/* initialise the spi controller */
 //	s3c_spi_hw_init(spi);
@@ -886,7 +936,7 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 //	}
 
 //	if (msg->wbuf)
-		spi_modecfg |= ( 0x1 << 5); /* Tx FIFO trigger level in INT mode */
+		spi_modecfg |= ( 0x10 << 5); /* Tx FIFO trigger level in INT mode */
 //	if (msg->rbuf)
 		spi_modecfg |= ( 0x1 << 11); /* Rx FIFO trigger level in INT mode */
 
@@ -1145,6 +1195,7 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 {
 //	struct s3c_spi *spi = dev_id;
 	unsigned long spi_sts;
+	unsigned long status;
 
 	/* dev_id is the master when calling request_irq() */
 	struct spi_master *master = (struct spi_master *)dev_id;
@@ -1196,10 +1247,23 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 	if (t->tx_buf) /* 是发送 */
 	{
 //		while((readl(info->reg_base + S3C_SPI_STATUS) & (0x01)) == 0x00)
-		while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 6)) != 0x00)
+		while((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 6))) != 0x00)
 		{
 //			goto out;
+			printk("INT1 S3C_SPI_STATUS = 0x%08x\n",status);
 		}
+
+		while((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x01))) == 0x00)
+		{
+			printk("INT2 S3C_SPI_STATUS = 0x%08x\n",status);
+		}
+
+		while((status = (readl(info->reg_base + S3C_SPI_STATUS) & (1 << 21))) == 0x00)
+		{
+			printk("INT3 S3C_SPI_STATUS = 0x%08x\n",status);
+		}
+
+		printk("tx info->cur_cnt = %d, t->len = %d\r\n", info->cur_cnt, t->len);
 		
 		info->cur_cnt++;
 
@@ -1232,6 +1296,8 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 	}
 	else /* 接收 */
 	{
+		printk("rx info->cur_cnt = %d, t->len = %d\r\n", info->cur_cnt, t->len);
+		
 		if((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13)) == 0x00)
 		{
 			goto out;
