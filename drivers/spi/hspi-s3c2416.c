@@ -750,6 +750,7 @@ static int s3c2416_spi_controler_init(int which, struct s3c_spi_info *info)
 #error you must define correct confige file.
 #endif
 
+#if 0
 	/* GPIO */
 	if (which == 0)
 	{
@@ -775,20 +776,10 @@ static int s3c2416_spi_controler_init(int which, struct s3c_spi_info *info)
 	}
 	else if (which == 1)
 	{
-#if 0
-		/* SPI controller 1 */
-		/*
-		* GPG5 SPIMISO   
-		* GPG6 SPIMOSI   
-		* GPG7 SPICLK    
-		*/
-		s3c2410_gpio_cfgpin(S3C2410_GPG(5), S3C2410_GPG5_SPIMISO1);
-		s3c2410_gpio_cfgpin(S3C2410_GPG(6), S3C2410_GPG6_SPIMOSI1);
-		s3c2410_gpio_cfgpin(S3C2410_GPG(7), S3C2410_GPG7_SPICLK1);        
 
-		/* 使能spi controller 1的时钟 */
-#endif
 	}
+
+#endif
 
 //out:
 	if (ret < 0)
@@ -797,6 +788,39 @@ static int s3c2416_spi_controler_init(int which, struct s3c_spi_info *info)
 	}
 	
 	return ret;
+}
+
+static int s3c2416_spi_gpio_init(int which, struct s3c_spi_info *info)
+{
+	int i = 0;
+	
+	/* GPIO */
+	if (which == 0)
+	{
+		/* SPI controller 0 */
+		/*
+		* GPE11 SPIMISO   
+		* GPE12 SPIMOSI   
+		* GPE13 SPICLK    
+		*/
+		s3c2410_gpio_cfgpin(S3C2410_GPE11, S3C2410_GPE11_SPIMISO0);
+		s3c2410_gpio_cfgpin(S3C2410_GPE12, S3C2410_GPE12_SPIMOSI0);
+		s3c2410_gpio_cfgpin(S3C2410_GPE13, S3C2410_GPE13_SPICLK0);
+
+		/* set ss pins output mode */
+		for(i = 0; i < ARRAY_SIZE(info->devinfo->ss_talbes); i++)
+		{
+			if(info->devinfo->ss_talbes[i] != 0)
+			{
+				s3c2410_gpio_cfgpin(info->devinfo->ss_talbes[i], S3C2410_GPIO_OUTPUT);
+				s3c2410_gpio_setpin(info->devinfo->ss_talbes[i], 1);
+			}
+		}
+	}
+	else if (which == 1)
+	{
+
+	}
 }
 
 static void flush_fifo(struct spi_device *spi)
@@ -874,6 +898,7 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 //	s3c_spi_hw_init(spi);
 	/* 硬件初始化，主要是初始化EPLL，和CLK,MISO,MOSI引脚 */
 	s3c2416_spi_controler_init(0, info);
+//	s3c2416_spi_gpio_init(0, info);
 
 	/* 1. Set transfer type (CPOL & CPHA set) */
 	spi_chcfg = 0;
@@ -1098,8 +1123,8 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 
 	DEBUG;
 
-	/* 0. 发送第1个spi_transfer之前setup，会把master上所有的SS脚置1，所以必须放在片选之前进行 */
-	master->setup(spi);
+//	/* 0. 发送第1个spi_transfer之前setup，会把master上所有的SS脚置1，所以必须放在片选之前进行 */
+//	master->setup(spi);
 
 //	printk("info->devinfo->ss_talbes[spi->chip_select] = %x\r\n", info->devinfo->ss_talbes[spi->chip_select]);
 
@@ -1115,6 +1140,8 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	/* 2.2 从spi_message中逐个取出spi_transfer,执行它 */
 	list_for_each_entry (t, &mesg->transfers, transfer_list) 
 	{
+		master->setup(spi);
+		
 		/* 处理这个spi_transfer */
 		info->cur_t = t;
 		info->cur_cnt = 0;
@@ -1196,6 +1223,7 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 //	struct s3c_spi *spi = dev_id;
 	unsigned long spi_sts;
 	unsigned long status;
+	volatile unsigned char recv;
 
 	/* dev_id is the master when calling request_irq() */
 	struct spi_master *master = (struct spi_master *)dev_id;
@@ -1270,6 +1298,7 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 		if (info->cur_cnt < t->len)/* 没发完? */
 		{
 			DEBUG;
+			recv = readb(info->reg_base + S3C_SPI_RX_DATA);
 			writeb(((unsigned char *)t->tx_buf)[info->cur_cnt], info->reg_base + S3C_SPI_TX_DATA); 
 		}     
 		else
@@ -1370,6 +1399,7 @@ static struct spi_master *create_spi_master_s3c2416(struct platform_device *pdev
 
 	/* 硬件初始化，主要是初始化EPLL，和CLK,MISO,MOSI引脚 */
 	s3c2416_spi_controler_init(bus_num, info);
+	s3c2416_spi_gpio_init(0, info);
 
 	DEBUG;
 
