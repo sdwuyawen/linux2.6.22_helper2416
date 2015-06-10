@@ -693,7 +693,6 @@ void print_reg(struct spi_device *spi)
 static int s3c2416_spi_controler_init(int which, struct s3c_spi_info *info)
 {
 	int ret = 0;
-	int i;
 
 	/* whick clock should I enable? */
 #if 0
@@ -821,6 +820,8 @@ static int s3c2416_spi_gpio_init(int which, struct s3c_spi_info *info)
 	{
 
 	}
+
+	return 0;
 }
 
 static void flush_fifo(struct spi_device *spi)
@@ -874,18 +875,17 @@ static void flush_fifo(struct spi_device *spi)
 static int s3c2416_spi_setup(struct spi_device *spi)
 {
 	struct s3c_spi_info *info;
-//	struct clk *clk;
+	struct clk *clk;
+	unsigned long src_clk_rate = 0;
 
 	unsigned int spi_chcfg = 0;
 	unsigned int spi_slavecfg =0;
 	unsigned int spi_inten= 0;
 	unsigned int spi_packet=0;
 
-	unsigned int prescaler = 250;
+	unsigned int prescaler = 3;
 	unsigned int spi_clkcfg = 0;
 	unsigned int spi_modecfg = 0 ;
-
-	int div;
 
 	DEBUG;
 
@@ -935,8 +935,10 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 
 #if defined CONFIG_SPICLK_PCLK
 	spi_clkcfg |= SPI_CLKSEL_PCLK;
+	clk = clk_get(NULL, "pclk");	
 #elif defined CONFIG_SPICLK_EPLL
 	spi_clkcfg |= SPI_CLKSEL_ECLK;
+	clk = clk_get(NULL, "epll");
 #else
 #error you must define correct confige file.
 #endif
@@ -944,7 +946,16 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 
 	spi_clkcfg = readl( info->reg_base + S3C_CLK_CFG);
 
-	/* SPI clockout = clock source / (2 * (prescaler +1)) */
+	/* SPI clockout = clock source / (2 * (prescaler + 1)) */
+	/* get HSPI src clock rate */
+	src_clk_rate = clk_get_rate(clk);
+//	printk("HSPI clk = %d Hz\r\n", src_clk_rate);
+	prescaler = DIV_ROUND_UP(clk_get_rate(clk), spi->max_speed_hz * 2) - 1;
+	if(prescaler > 255)
+	{
+		prescaler = 255;
+	}
+//	printk("HSPI prescaler = %d\r\n", prescaler);
 	spi_clkcfg |= prescaler;
 	writel( spi_clkcfg , info->reg_base + S3C_CLK_CFG);
 
@@ -1163,7 +1174,7 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	/* 1. 选中芯片 */
 	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 0);  /* 默认为低电平选中 */
 
-	udelay(100);
+//	udelay(100);
 	/* 2. 发数据 */
 
 	/* 2.1 发送第1个spi_transfer之前setup */
@@ -1218,7 +1229,7 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 				readb(info->reg_base + S3C_SPI_RX_DATA);
 			}
 
-			printk("S3C_SPI_STATUS = 0x%08x\n",readl(info->reg_base + S3C_SPI_STATUS));
+//			printk("S3C_SPI_STATUS = 0x%08x\n",readl(info->reg_base + S3C_SPI_STATUS));
 			
 			/* 接收 */
 			writeb(0xff, info->reg_base + S3C_SPI_TX_DATA);
@@ -1238,7 +1249,7 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	mesg->status = 0;
 	mesg->complete(mesg->context);    
 
-	udelay(100);
+//	udelay(100);
 	
 	/* 3. 取消片选 */
 	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 1);  /* 默认为低电平选中 */
