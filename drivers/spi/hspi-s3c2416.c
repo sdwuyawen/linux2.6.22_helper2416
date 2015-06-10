@@ -1148,7 +1148,6 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	struct spi_master *master = spi->master;
 	struct s3c_spi_info *info;
 	struct spi_transfer	*t = NULL;
-	volatile unsigned char dummy;
 
 	info = spi_master_get_devdata(master);
 
@@ -1182,12 +1181,13 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 		{
 			DEBUG;
 
-			/* 开始发送前清空接收FIFO */
+			/* 开始发送前清空RX FIFO */
 			while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13)) != 0x00)
 			{
 				DEBUG;
 				print_reg(spi);
-				dummy = readb(info->reg_base + S3C_SPI_RX_DATA);
+				/* dummy read */
+				readb(info->reg_base + S3C_SPI_RX_DATA);
 			}
 			
 			/* 发送 */
@@ -1201,14 +1201,6 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 
 			DEBUG;
 			print_reg(spi);
-#if 0
-			while((readl(info->reg_base + S3C_SPI_STATUS) & 0x01) == 0x00)
-			{
-				msleep(1000);
-				DEBUG;
-				print_reg(spi);
-			}
-#endif
 
 			/* 休眠 */
 			wait_for_completion(&info->done);
@@ -1222,7 +1214,8 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 			{
 				DEBUG;
 				print_reg(spi);
-				dummy = readb(info->reg_base + S3C_SPI_RX_DATA);
+				/* dummy read */
+				readb(info->reg_base + S3C_SPI_RX_DATA);
 			}
 
 			printk("S3C_SPI_STATUS = 0x%08x\n",readl(info->reg_base + S3C_SPI_STATUS));
@@ -1315,16 +1308,30 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 	{
 //		while((readl(info->reg_base + S3C_SPI_STATUS) & (0x01)) == 0x00)
 
+#if 0
 		if((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13))) == 0x00)
 		{
 			goto out;
 		}
 		printk("INT0 S3C_SPI_STATUS = 0x%08x\n",status);
-		
-		while((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 6))) != 0x00)
+#endif		
+
+#if 1
+		/* wait until tx fifo is empty */
+		while((status = readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 6)) != 0x00)
+		{
+//			printk("INT1 S3C_SPI_STATUS = 0x%08x\n",status);
+		}
+#endif
+
+#if 0
+		/* wait until tx fifo is less than half full */
+		while(((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 6))) >> 6) > 64 / 2)
 		{
 			printk("INT1 S3C_SPI_STATUS = 0x%08x\n",status);
 		}
+#endif
+
 #if 0
 		while((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x01))) == 0x00)
 		{
@@ -1336,14 +1343,15 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 			printk("INT3 S3C_SPI_STATUS = 0x%08x\n",status);
 		}
 #endif
-		printk("tx info->cur_cnt = %d, t->len = %d\r\n", info->cur_cnt, t->len);
+//		printk("tx info->cur_cnt = %d, t->len = %d\r\n", info->cur_cnt, t->len);
 		
 		info->cur_cnt++;
 
 		if (info->cur_cnt < t->len)/* 没发完? */
 		{
 			DEBUG;
-//			readb(info->reg_base + S3C_SPI_RX_DATA);
+			/* dummy read to clear rx fifo */
+			readb(info->reg_base + S3C_SPI_RX_DATA);
 			writeb(((unsigned char *)t->tx_buf)[info->cur_cnt], info->reg_base + S3C_SPI_TX_DATA); 
 		}     
 		else
@@ -1368,17 +1376,14 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 	}
 	else /* 接收 */
 	{
-		printk("rx info->cur_cnt = %d, t->len = %d\r\n", info->cur_cnt, t->len);
+//		printk("rx info->cur_cnt = %d, t->len = %d\r\n", info->cur_cnt, t->len);
 		
 		if((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13))) == 0x00)
 		{
 			goto out;
 		}
-		printk("INT4 S3C_SPI_STATUS = 0x%08x\n",status);
-//		while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13)) == 0x00)
-//		{
-//			goto out;
-//		}
+//		printk("INT4 S3C_SPI_STATUS = 0x%08x\n",status);
+
 		/* 读/存数据 */
 		if(info->cur_cnt < t->len)
 		{
