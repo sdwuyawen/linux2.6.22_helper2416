@@ -44,6 +44,8 @@
 
 #include <linux/spi/spi.h>
 #include <asm/arch/spi-gpio.h>
+#include <asm/arch/regs-irq.h>
+
 
 //#include "spi-dev.h"
 #include "hspi-s3c2416.h"
@@ -1267,11 +1269,17 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 //	struct s3c_spi *spi = dev_id;
 	volatile unsigned long spi_sts;
 	volatile unsigned long status;
+	unsigned long int_en = 0;
 
 	/* dev_id is the master when calling request_irq() */
 	struct spi_master *master = (struct spi_master *)dev_id;
 	struct s3c_spi_info *info = spi_master_get_devdata(master);
-	struct spi_transfer *t = info->cur_t;	
+	struct spi_transfer *t = info->cur_t;
+
+	/* save irq enable flags for spi */
+	int_en = readl(info->reg_base + S3C_SPI_INT_EN);
+	/* disable all irq for spi */
+	writel(0, info->reg_base + S3C_SPI_INT_EN);
 
 	DEBUG;
 	
@@ -1368,7 +1376,8 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 		else
 		{
 			DEBUG;
-			s3c2416_spi_disable_txfifolevel_int(master);		/* disable txfifo int */
+//			s3c2416_spi_disable_txfifolevel_int(master);		/* disable txfifo int */
+			int_en &= ~SPI_INT_TX_FIFORDY_EN;
 
 			/* wait for txfifo becomes empty */
 			while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 6)) != 0x00)
@@ -1410,12 +1419,25 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 		else
 		{
 			DEBUG;
-			s3c2416_spi_disable_rxfifolevel_int(master);		/* disable rxfifo int */
+//			s3c2416_spi_disable_rxfifolevel_int(master);		/* disable rxfifo int */
+			int_en &= ~SPI_INT_RX_FIFORDY_EN;
+				
 			complete(&info->done); /* 唤醒 */
 		}
 	}
 
 out:
+	/* TX FIFO中断在进入中断处理前(清除了中断标志后)，可能
+	 * 再次申请了中断，写入了SRCPND和INTPND。所以即使在IRQ中关闭了TX FIFO中断，该SRCPND和
+	 * INTPND中的中断申请仍然有效，多进入一次TX FIFO中断
+	 * 所以在重新使能SPI外设的中断前，清除SRCPND和INTPND中的中断
+	 */
+	/* clear interruput pending bits in SRCPND */
+	writel(1 << 22, S3C2410_SRCPND);
+	/* clear interruput pending bits in INTPND */
+	writel(1 << 22, S3C2410_INTPND);
+	/* reenable HSPI interruput */
+	writel(int_en, info->reg_base + S3C_SPI_INT_EN);
 	return IRQ_HANDLED;
 }
 
