@@ -961,7 +961,7 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 //	}
 
 //	if (msg->wbuf)
-		spi_modecfg |= ( 0x10 << 5); /* Tx FIFO trigger level in INT mode */
+		spi_modecfg |= ( 0x1 << 5); /* Tx FIFO trigger level in INT mode */
 //	if (msg->rbuf)
 		spi_modecfg |= ( 0x1 << 11); /* Rx FIFO trigger level in INT mode */
 
@@ -978,7 +978,8 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 
 //	spi_inten = SPI_INT_TX_FIFORDY_EN|SPI_INT_RX_FIFORDY_EN|SPI_INT_TX_UNDERRUN_EN|SPI_INT_TX_OVERRUN_EN|SPI_INT_RX_UNDERRUN_EN|SPI_INT_RX_OVERRUN_EN|SPI_INT_TRAILING_EN;
 //	spi_inten = SPI_INT_TX_UNDERRUN_EN|SPI_INT_TX_OVERRUN_EN|SPI_INT_RX_UNDERRUN_EN|SPI_INT_RX_OVERRUN_EN|SPI_INT_TRAILING_EN;
-	spi_inten = 0;
+//	spi_inten = 0;
+	spi_inten = SPI_INT_TX_UNDERRUN_EN|SPI_INT_TX_OVERRUN_EN|SPI_INT_RX_UNDERRUN_EN|SPI_INT_RX_OVERRUN_EN;
 	writel(spi_inten, info->reg_base + S3C_SPI_INT_EN);
 
 	writel(0x1f, info->reg_base + S3C_PENDING_CLR);
@@ -1110,6 +1111,38 @@ static int s3c2416_spi_disable_rxfifolevel_int(struct spi_master *master)
 	return 0;
 }
 
+static int s3c2416_spi_enable_txrxfifolevel_int(struct spi_master *master, int tx, int rx)
+{
+	struct s3c_spi_info *info;
+	unsigned int regval;
+
+	info = spi_master_get_devdata(master);
+
+	regval = readl(info->reg_base + S3C_SPI_INT_EN);
+
+	if(tx)
+	{
+		regval |= SPI_INT_TX_FIFORDY_EN;
+	}
+	else
+	{
+		regval &= ~SPI_INT_TX_FIFORDY_EN;
+	}
+
+	if(rx)
+	{
+		regval |= SPI_INT_RX_FIFORDY_EN;
+	}
+	else
+	{
+		regval &= ~SPI_INT_RX_FIFORDY_EN;
+	}
+
+	writel(regval, info->reg_base + S3C_SPI_INT_EN);	
+
+	return 0;
+}
+
 static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg)
 {
 	struct spi_master *master = spi->master;
@@ -1135,13 +1168,11 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	/* 2. 发数据 */
 
 	/* 2.1 发送第1个spi_transfer之前setup */
-//	master->setup(spi);
+	master->setup(spi);
 
 	/* 2.2 从spi_message中逐个取出spi_transfer,执行它 */
 	list_for_each_entry (t, &mesg->transfers, transfer_list) 
-	{
-		master->setup(spi);
-		
+	{	
 		/* 处理这个spi_transfer */
 		info->cur_t = t;
 		info->cur_cnt = 0;
@@ -1150,6 +1181,15 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 		if (t->tx_buf)
 		{
 			DEBUG;
+
+			/* 开始发送前清空接收FIFO */
+			while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13)) != 0x00)
+			{
+				DEBUG;
+				print_reg(spi);
+				dummy = readb(info->reg_base + S3C_SPI_RX_DATA);
+			}
+			
 			/* 发送 */
 			writeb(((unsigned char *)t->tx_buf)[0], info->reg_base + S3C_SPI_TX_DATA);
 
@@ -1221,9 +1261,8 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 {
 //	struct s3c_spi *spi = dev_id;
-	unsigned long spi_sts;
-	unsigned long status;
-	volatile unsigned char recv;
+	volatile unsigned long spi_sts;
+	volatile unsigned long status;
 
 	/* dev_id is the master when calling request_irq() */
 	struct spi_master *master = (struct spi_master *)dev_id;
@@ -1275,12 +1314,18 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 	if (t->tx_buf) /* 是发送 */
 	{
 //		while((readl(info->reg_base + S3C_SPI_STATUS) & (0x01)) == 0x00)
+
+		if((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13))) == 0x00)
+		{
+			goto out;
+		}
+		printk("INT0 S3C_SPI_STATUS = 0x%08x\n",status);
+		
 		while((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 6))) != 0x00)
 		{
-//			goto out;
 			printk("INT1 S3C_SPI_STATUS = 0x%08x\n",status);
 		}
-
+#if 0
 		while((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x01))) == 0x00)
 		{
 			printk("INT2 S3C_SPI_STATUS = 0x%08x\n",status);
@@ -1290,7 +1335,7 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 		{
 			printk("INT3 S3C_SPI_STATUS = 0x%08x\n",status);
 		}
-
+#endif
 		printk("tx info->cur_cnt = %d, t->len = %d\r\n", info->cur_cnt, t->len);
 		
 		info->cur_cnt++;
@@ -1298,7 +1343,7 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 		if (info->cur_cnt < t->len)/* 没发完? */
 		{
 			DEBUG;
-			recv = readb(info->reg_base + S3C_SPI_RX_DATA);
+//			readb(info->reg_base + S3C_SPI_RX_DATA);
 			writeb(((unsigned char *)t->tx_buf)[info->cur_cnt], info->reg_base + S3C_SPI_TX_DATA); 
 		}     
 		else
@@ -1317,8 +1362,6 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 				
 			}
 			/* all bytes have been translated here */
-//			udelay(200);
-//			mdelay(1);
 //			print_reg(info->cur_dev);
 			complete(&info->done); /* 唤醒 */
 		}	
@@ -1327,10 +1370,11 @@ static irqreturn_t s3c2416_spi_irq(int irqno, void *dev_id)
 	{
 		printk("rx info->cur_cnt = %d, t->len = %d\r\n", info->cur_cnt, t->len);
 		
-		if((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13)) == 0x00)
+		if((status = (readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13))) == 0x00)
 		{
 			goto out;
 		}
+		printk("INT4 S3C_SPI_STATUS = 0x%08x\n",status);
 //		while((readl(info->reg_base + S3C_SPI_STATUS) & (0x7F << 13)) == 0x00)
 //		{
 //			goto out;
