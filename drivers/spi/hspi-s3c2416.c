@@ -953,6 +953,7 @@ static int s3c2416_spi_setup(struct spi_device *spi)
 	src_clk_rate = clk_get_rate(clk);
 //	printk("HSPI clk = %d Hz\r\n", src_clk_rate);
 	prescaler = DIV_ROUND_UP(clk_get_rate(clk), spi->max_speed_hz * 2) - 1;
+	clk_put(clk);
 	if(prescaler > 255)
 	{
 		prescaler = 255;
@@ -1516,7 +1517,7 @@ static void destroy_spi_master_s3c2416(struct spi_master *master)
 	spi_unregister_master(master);
 	free_irq(info->irq, master);
 	iounmap((void *)info->reg_base);
-	kfree(master);
+//	kfree(master);
 }
 
 /* s3c_spi_probe

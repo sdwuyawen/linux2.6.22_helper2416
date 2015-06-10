@@ -606,7 +606,7 @@ static struct spi_board_info hspi_info_helper2416[] =
 {
 	{
 	    	 .modalias = "hspi_mcp2515",  						/* 对应的spi_driver名字也是"spigpio_tft" */
-	    	 .max_speed_hz = 8000000,						/* max spi clock (SCK) speed in HZ */
+	    	 .max_speed_hz = 4000000,						/* max spi clock (SCK) speed in HZ */
 	    	 .bus_num = 0,    						 		/* jz2440里OLED接在SPI CONTROLLER 1 */
 	    	 .mode    = SPI_MODE_0,
 												/* oled_cs, 它的含义由spi_master确定 */
