@@ -1183,6 +1183,8 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	/* 2.1 发送第1个spi_transfer之前setup */
 	master->setup(spi);
 
+	udelay(100);
+
 	/* 2.2 从spi_message中逐个取出spi_transfer,执行它 */
 	list_for_each_entry (t, &mesg->transfers, transfer_list) 
 	{	
@@ -1252,7 +1254,7 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 	mesg->status = 0;
 	mesg->complete(mesg->context);    
 
-//	udelay(100);
+	udelay(100);
 	
 	/* 3. 取消片选 */
 	s3c2410_gpio_setpin(info->devinfo->ss_talbes[spi->chip_select], 1);  /* 默认为低电平选中 */
