@@ -66,6 +66,7 @@ extern void __list_add(struct list_head *new,
 #ifndef CONFIG_DEBUG_LIST
 static inline void list_add(struct list_head *new, struct list_head *head)
 {
+	/* new, prev, next */
 	__list_add(new, head, head->next);
 }
 #else
@@ -83,6 +84,7 @@ extern void list_add(struct list_head *new, struct list_head *head);
  */
 static inline void list_add_tail(struct list_head *new, struct list_head *head)
 {
+	/* new, prev, next */
 	__list_add(new, head->prev, head);
 }
 

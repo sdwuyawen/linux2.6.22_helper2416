@@ -214,7 +214,7 @@ static struct cpu_table cpu_ids[] __initdata = {
 /* minimal IO mapping */
 
 static struct map_desc s3c_iodesc[] __initdata = {
-	IODESC_ENT(GPIO),
+	IODESC_ENT(GPIO),	/* S3C24XX_VA_GPIO */
 	IODESC_ENT(IRQ),
 	IODESC_ENT(MEMCTRL),
 	IODESC_ENT(UART),

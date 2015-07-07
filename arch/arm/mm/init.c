@@ -326,6 +326,7 @@ void __init bootmem_init(struct meminfo *mi)
 	}
 
 	high_memory = __va(memend_pfn << PAGE_SHIFT);
+	printk("high_memory = %08x\n", high_memory);
 
 	/*
 	 * This doesn't seem to be used by the Linux memory manager any

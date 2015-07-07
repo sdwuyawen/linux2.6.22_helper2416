@@ -394,6 +394,7 @@ static void tasklet_action(struct softirq_action *a)
 	__get_cpu_var(tasklet_vec).list = NULL;
 	local_irq_enable();
 
+	/* 遍历tasklet链表，如果某节点的t->count为0，则执行相应的函数 */
 	while (list) {
 		struct tasklet_struct *t = list;
 
@@ -482,7 +483,13 @@ EXPORT_SYMBOL(tasklet_kill);
 
 void __init softirq_init(void)
 {
+	/* 向软中断向量表注册正常优先级的tasklet软中断
+	 * tasklet_action()是tasklet的处理函数
+	 */
 	open_softirq(TASKLET_SOFTIRQ, tasklet_action, NULL);
+	/* 向软中断向量表注册高优先级的tasklet软中断
+	 * tasklet_hi_action()是高优先级的tasklet的处理函数
+	 */
 	open_softirq(HI_SOFTIRQ, tasklet_hi_action, NULL);
 }
 
