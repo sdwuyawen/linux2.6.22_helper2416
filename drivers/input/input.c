@@ -186,6 +186,10 @@ void input_event(struct input_dev *dev, unsigned int type, unsigned int code, in
 	if (type != EV_SYN)
 		dev->sync = 0;
 
+	/* 对于input_dev匹配的所有handle
+	 * 从链表dev->h_list中，调用所有的handle的handler中的event方法。例如
+	 * evdev.c中的evdev_event()方法可以用wake_up_interruptible唤醒进程
+	 */
 	if (dev->grab)
 		dev->grab->handler->event(dev->grab, type, code, value);
 	else
