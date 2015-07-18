@@ -1039,7 +1039,7 @@ static struct resource dm9000_resources[] = {
         .start  = IRQ_EINT11,  
         .end    = IRQ_EINT11,  
 //      .flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,   
-        .flags  = IORESOURCE_IRQ | IRQF_TRIGGER_HIGH,  
+        .flags  = IORESOURCE_IRQ | IRQF_TRIGGER_LOW,  
     },  
 };  
 

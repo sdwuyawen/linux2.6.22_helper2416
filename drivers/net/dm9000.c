@@ -397,6 +397,9 @@ dm9000_probe(struct platform_device *pdev)
 	int i;
 	u32 id_val;
 
+	/* 设置MAC地址 */
+	static char net_mac_addr[]={0x00,0xe0,0x3d,0xf4,0xdd,0xf7};
+
 	/* Init network device */
 	ndev = alloc_etherdev(sizeof (struct board_info));
 	if (!ndev) {
@@ -575,8 +578,10 @@ dm9000_probe(struct platform_device *pdev)
 	if (!is_valid_ether_addr(ndev->dev_addr)) {
 		/* try reading from mac */
 
+		/* 设置固定的MAC地址 */
 		for (i = 0; i < 6; i++)
-			ndev->dev_addr[i] = ior(db, i+DM9000_PAR);
+//			ndev->dev_addr[i] = ior(db, i+DM9000_PAR);
+			ndev->dev_addr[i] = net_mac_addr[i];
 	}
 
 	if (!is_valid_ether_addr(ndev->dev_addr))
@@ -614,9 +619,14 @@ dm9000_open(struct net_device *dev)
 {
 	board_info_t *db = (board_info_t *) dev->priv;
 
+	/* 修改中断申请 */
+	unsigned long irqflags = db->irq_res->flags & IRQF_TRIGGER_MASK;
+	irqflags |= IRQF_SHARED;
+
 	PRINTK2("entering dm9000_open\n");
 
-	if (request_irq(dev->irq, &dm9000_interrupt, IRQF_SHARED, dev->name, dev))
+//	if (request_irq(dev->irq, &dm9000_interrupt, IRQF_SHARED, dev->name, dev))
+	if (request_irq(dev->irq, &dm9000_interrupt, irqflags, dev->name, dev))
 		return -EAGAIN;
 
 	/* Initialize DM9000 board */
@@ -704,6 +714,8 @@ dm9000_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	(db->outblk)(db->io_data, skb->data, skb->len);
 	db->stats.tx_bytes += skb->len;
+
+	printk("dm9000 tx %d bytes\n", skb->len);
 
 	/* TX control: First packet immediately send, second packet queue */
 	if (db->tx_pkt_cnt == 0) {
@@ -1059,6 +1071,7 @@ dm9000_hash_table(struct net_device *dev)
 
 	spin_lock_irqsave(&db->lock,flags);
 
+	/* 写入MAC地址 */
 	for (i = 0, oft = 0x10; i < 6; i++, oft++)
 		iow(db, oft, dev->dev_addr[i]);
 
