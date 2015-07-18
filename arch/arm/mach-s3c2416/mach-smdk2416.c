@@ -154,6 +154,7 @@ static struct s3c2410_uartcfg smdk2416_uartcfgs[] __initdata = {
 
 extern struct platform_device helper2416_gpiospi;		/* 这里不应该用声明了，因为已经EXPORT_SYMBOL了。为什么不行? */
 extern struct platform_device s3c_device_hspi0;
+extern struct platform_device s3c_device_dm9000;
 
 static struct platform_device *smdk2416_devices[] __initdata = {
 	
@@ -171,6 +172,7 @@ static struct platform_device *smdk2416_devices[] __initdata = {
 	
 	&helper2416_gpiospi,
 	&s3c_device_hspi0,
+	&s3c_device_dm9000,
 };
 
 static struct s3c24xx_board smdk2416_board __initdata = {
@@ -283,6 +285,89 @@ static void smdk2416_cs89x0_set(void)
 
 }
 
+
+static void smdk2416_dm9000_set(void)
+{
+	u32 val;
+
+	/********* add here *********/
+	putstring_VA("smdk2416_dm9000_set()\r\n");
+	/********* end add *********/
+
+/*
+#define S3C24XX_VA_SROMC	S3C2410_ADDR(0x03700000)
+#define S3C2443_PA_SROMC	(0x4F000000)
+#define S3C24XX_SZ_SROMC	SZ_1M
+*/
+	/* Bank2 Idle cycle ctrl. */
+	writel(0xf, S3C_SSMC_SMBIDCYR2);
+
+	/* Bank2 Read Wait State cont. = 14 clk          Tacc? */
+	/* WSTRD表示从nCS有效到nRD无效总长度，即nRD总长度，包含WSTOEN部分，WSTOEN必须<=WSTRD */
+	writel(12, S3C_SSMC_SMBWSTRDR2);
+
+	/* Bank2 Write Wait State ctrl. */
+	/* WSTWR表示从nCS有效到nWE无效总长度，即nWR总长度，包含WSTWEN部分，WSTWEN必须<=WSTWR */
+	writel(12, S3C_SSMC_SMBWSTWRR2);
+
+	/* Bank2 Output Enable Assertion Delay ctrl.     Tcho? */
+	/* nCS有效到nOE有效之间的间隔，和WSTRD配套使用 */
+	writel(2, S3C_SSMC_SMBWSTOENR2);
+
+	/* Bank2 Write Enable Assertion Delay ctrl. */
+	/* nCS有效到nWE有效之间的间隔，和WSTWR配套使用 */
+	writel(2, S3C_SSMC_SMBWSTWENR2);
+
+	/* 在ADDR信号和nCS信号之间插入delay，数值由SMBCR中DELAYnCS确定 */
+	val = readl(S3C_SSMC_SMBCR2);
+
+	val |=  ((1<<15)|(1<<7));		/* .bit7 = 1, .bit15 = 1 */
+//	val &=  ~((1<<15)|(1<<7));		/* .bit7 = 0, .bit15 = 0 */
+	writel(val, S3C_SSMC_SMBCR2);
+
+	/* bit2是使能nWait,=1表示使能
+	 * =0时，WSTRD,WSTWR,WSTOEN,WSTWEN有效
+	 * =1时，SMBCR.DRnOWE=1时
+	 *             nCS到nOE的时间由WSTOEN确定，必须大于1
+	 *             nCS到nWE的时间由WSTWEN确定，必须大于1
+	 *       SMBCR.DRnCS=1时
+	 *             ADDR Signal和nCS之间的时间由SMBCR.DELAYnCS确定
+	 *       
+	 */
+	/* bit1配置nWait的极性，默认0表示低电平有效 */
+	/* bit0是RBLE,=1表示在read时nBE[1:0]保持为0
+	 * nBE[1:0]在板子上未连接
+	 */
+	val = readl(S3C_SSMC_SMBCR2);
+	val |=  ((1<<2)|(1<<0));	/* .bit2 = 1, .bit0 = 1 */
+//	val &=  ~(1<<2);			/* .bit2 = 0 */
+//	val |=  (1<<0);			/* .bit0 = 1 */
+	writel(val, S3C_SSMC_SMBCR2);
+
+	/* SMAddrValid = always High when Read/Write
+	 * RSMAVD保持为高
+	 */
+	val = readl(S3C_SSMC_SMBCR2);
+	val &= ~((3<<20)|(3<<12));
+	writel(val, S3C_SSMC_SMBCR2);
+
+	/* 设置位宽,8 */
+	val = readl(S3C_SSMC_SMBCR2);
+	val &= ~(3<<4);
+	writel(val, S3C_SSMC_SMBCR2);
+
+	val = readl(S3C_SSMC_SMBCR2);
+	val |= (0<<4);
+
+	writel(val, S3C_SSMC_SMBCR2);
+
+	/********* add here *********/
+	putstring_VA("end of smdk2416_dm9000_set()\r\n");
+	/********* end add *********/
+
+}
+
+
 static void __init smdk2416_machine_init(void)
 {
 	/********* add here *********/
@@ -290,6 +375,8 @@ static void __init smdk2416_machine_init(void)
 	/********* end add *********/
 	/* SROM init for NFS */
 	smdk2416_cs89x0_set();
+	/* 为DM9000设置nRCS2 */
+	smdk2416_dm9000_set();
 
 	/* 	
 		这里可以添加platform_add_devices，用于注册设备

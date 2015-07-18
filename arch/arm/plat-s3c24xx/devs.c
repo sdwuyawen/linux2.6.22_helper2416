@@ -40,6 +40,7 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
 #include <asm/arch/regs-gpio.h>
+#include <linux/dm9000.h>
 
 /* Serial port registrations */
 
@@ -1021,4 +1022,42 @@ EXPORT_SYMBOL(s3c_device_smc911x);
 #endif
 
 /* 新增加结束 */
+
+/* 新增加DM9000 */
+static struct resource dm9000_resources[] = {  
+    [0] = {  
+        .start  = S3C24XX_PA_DM9000,  
+        .end    = S3C24XX_PA_DM9000+0x00,  
+        .flags  = IORESOURCE_MEM,  
+    },  
+    [1] = {  
+        .start  = S3C24XX_PA_DM9000+0x01,  
+        .end    = S3C24XX_PA_DM9000+S3C24XX_SZ_DM9000-1,  
+        .flags  = IORESOURCE_MEM,  
+    },  
+    [2] = {  
+        .start  = IRQ_EINT11,  
+        .end    = IRQ_EINT11,  
+//      .flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,   
+        .flags  = IORESOURCE_IRQ | IRQF_TRIGGER_HIGH,  
+    },  
+};  
+
+static struct dm9000_plat_data dm9000_setup = {  
+    .flags          = DM9000_PLATF_8BITONLY  
+};  
+
+struct platform_device s3c_device_dm9000 = {  
+    .name           = "dm9000",  
+    .id             = 0,  
+    .num_resources  = ARRAY_SIZE(dm9000_resources),  
+    .resource       = dm9000_resources,  
+    .dev            =   
+    {  
+        .platform_data = &dm9000_setup,  
+    }  
+};  
+EXPORT_SYMBOL(s3c_device_dm9000);  
+
+/* 新增加DM9000结束 */
 

@@ -653,6 +653,8 @@ extern void __iomem *s3c24xx_va_gpio2;
 #define S3C_PA_SPI_0        (0x52000000)
 #define S3C_SZ_SPI_0        SZ_1M	
 #define S3C_PA_SMC9115      S3C2450_PA_SMC9115
+#define S3C24XX_PA_DM9000      (0x10000000)   
+#define S3C24XX_SZ_DM9000      SZ_1M  
 #else
 #define S3C24XX_PA_LCD      S3C2410_PA_LCD
 #define S3C24XX_PA_USBDEV   S3C2410_PA_USBDEV

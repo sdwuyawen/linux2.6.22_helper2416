@@ -534,6 +534,8 @@ dm9000_probe(struct platform_device *pdev)
 		goto release;
 	}
 
+	printk("%s: read id: 0x%08x\n", CARDNAME, id_val);
+
 	/* from this point we assume that we have found a DM9000 */
 
 	/* driver system function */

@@ -50,7 +50,7 @@ static struct map_desc s3c2416_iodesc[] __initdata = {
 	IODESC_ENT(LCD),
 	IODESC_ENT(USBDEV),
 	IODESC_ENT(CAMIF),
-	IODESC_ENT(EBI),
+	IODESC_ENT(EBI),			/* ∂‘”¶S3C24XX_VA_EBI, S3C24XX_PA_EBI, S3C24XX_SZ_EBI */
 	IODESC_ENT(SROMC),
 };
 
