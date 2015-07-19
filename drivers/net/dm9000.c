@@ -715,7 +715,7 @@ dm9000_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	(db->outblk)(db->io_data, skb->data, skb->len);
 	db->stats.tx_bytes += skb->len;
 
-	printk("dm9000 tx %d bytes\n", skb->len);
+//	printk("dm9000 tx %d bytes\n", skb->len);
 
 	/* TX control: First packet immediately send, second packet queue */
 	if (db->tx_pkt_cnt == 0) {
