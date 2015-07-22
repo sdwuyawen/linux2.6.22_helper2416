@@ -74,6 +74,7 @@
 #include <linux/serial.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>
@@ -82,6 +83,11 @@
 
 #include <asm/arch/regs-serial.h>
 #include <asm/arch/regs-gpio.h>
+
+#define TIOCGRS485	0x542E
+#ifndef TIOCSRS485
+#define TIOCSRS485	0x542F
+#endif
 
 /* structures */
 
@@ -118,13 +124,13 @@ struct serial_rs485 {
 	__u32	delay_rts_after_send;	/* Delay after send (milliseconds) */
 	__u32	padding[5];		/* Memory is cheap, new structs
 					   are a royal PITA .. */
-	unsigned int pin_txen;	/* txen pin for 485 mode */
+//	unsigned int pin_txen;	/* txen pin for 485 mode */
 };
 
 struct s3c24xx_uart_port {
 	unsigned char			rx_claimed;
 	unsigned char			tx_claimed;
-	struct serial_rs485		mode;		/* 485 mode configuration */
+	struct serial_rs485		rs485conf;		/* 485 mode configuration */
 
 	struct s3c24xx_uart_info	*info;
 	struct s3c24xx_uart_clksrc	*clksrc;
@@ -267,7 +273,7 @@ static void s3c24xx_serial_rx_disable(struct uart_port *port)
 static void s3c24xx_serial_txen_disable(struct uart_port *port)
 {
 	struct s3c24xx_uart_port *ourport = to_ourport(port);
-	unsigned int pin = ourport->mode.pin_txen;
+	unsigned int pin = ourport->rs485conf.padding[0];
 
 	s3c2410_gpio_setpin(pin, 0);
 }
@@ -275,7 +281,7 @@ static void s3c24xx_serial_txen_disable(struct uart_port *port)
 static void s3c24xx_serial_txen_enable(struct uart_port *port)
 {
 	struct s3c24xx_uart_port *ourport = to_ourport(port);
-	unsigned int pin = ourport->mode.pin_txen;
+	unsigned int pin = ourport->rs485conf.padding[0];
 
 	/* TXEN引脚配置为输出 */
 	s3c2410_gpio_cfgpin(pin, S3C2410_GPIO_OUTPUT);
@@ -290,7 +296,7 @@ static void s3c24xx_serial_stop_tx(struct uart_port *port)
 	{
 		printk("%s %d jiffies=%d\n", __FUNCTION__, __LINE__, jiffies);
 		
-//		if(ourport->mode & SER_RS485_ENABLED)
+		if(ourport->rs485conf.flags & SER_RS485_ENABLED)
 		{
 			/* 等待发送完成 */
 			while(s3c24xx_serial_tx_empty(port) == 0)
@@ -302,7 +308,7 @@ static void s3c24xx_serial_stop_tx(struct uart_port *port)
 				
 			}
 			/* 延时 */
-			udelay(ourport->mode.delay_rts_after_send);
+			udelay(ourport->rs485conf.delay_rts_after_send);
 			/* 关闭发送使能 */
 			s3c24xx_serial_txen_disable(port);
 		}
@@ -326,12 +332,12 @@ static void s3c24xx_serial_start_tx(struct uart_port *port)
 	{
 		printk("%s %d jiffies=%d\n", __FUNCTION__, __LINE__, jiffies);
 		
-//		if(ourport->mode & SER_RS485_ENABLED)
+		if(ourport->rs485conf.flags & SER_RS485_ENABLED)
 		{
 			/* 开启发送使能 */
 			s3c24xx_serial_txen_enable(port);
 			/* 延时 */
-			udelay(ourport->mode.delay_rts_before_send);
+			udelay(ourport->rs485conf.delay_rts_before_send);
 		}
 	}
 	
@@ -1129,6 +1135,47 @@ s3c24xx_serial_verify_port(struct uart_port *port, struct serial_struct *ser)
 }
 
 
+static int
+s3c24xx_serial_ioctl(struct uart_port *port, unsigned int cmd, unsigned long arg)
+{
+	struct serial_rs485 rs485conf;
+	struct s3c24xx_uart_port *ourport = to_ourport(port);
+
+	printk("%s %d\n", __FUNCTION__, __LINE__);
+
+	switch (cmd) {
+	case TIOCSRS485:
+		if (copy_from_user(&rs485conf, (struct serial_rs485 *) arg,
+					sizeof(struct serial_rs485)))
+			return -EFAULT;
+		
+		if(rs485conf.flags & SER_RS485_ENABLED)
+		{
+			printk("UART%d set RS485 mode\n", port->line);
+			ourport->rs485conf.flags |= SER_RS485_ENABLED;
+		}
+		else
+		{
+			printk("UART%d set RS232 mode\n", port->line);
+			ourport->rs485conf.flags &= ~SER_RS485_ENABLED;
+		}
+		
+		break;
+
+	case TIOCGRS485:
+		if (copy_to_user((struct serial_rs485 *) arg,
+					&(ourport->rs485conf),
+					sizeof(struct serial_rs485)))
+			return -EFAULT;
+		break;
+
+	default:
+		return -ENOIOCTLCMD;
+	}
+	return 0;
+}
+
+
 #ifdef CONFIG_SERIAL_S3C2410_CONSOLE
 
 static struct console s3c24xx_serial_console;
@@ -1159,7 +1206,7 @@ static struct uart_ops s3c24xx_serial_ops = {
 	.request_port	= s3c24xx_serial_request_port,
 	.config_port	= s3c24xx_serial_config_port,
 	.verify_port	= s3c24xx_serial_verify_port,
-//	.ioctl		= s3c24xx_serial_ioctl,
+	.ioctl		= s3c24xx_serial_ioctl,
 };
 
 /* UART设备驱动，关键数据结构2:
@@ -1193,10 +1240,10 @@ static struct s3c24xx_uart_port s3c24xx_serial_ports[NR_PORTS] = {
 		}
 	},
 	[1] = {
-		.mode = {
+		.rs485conf = {
 			.delay_rts_before_send = 100,
 			.delay_rts_after_send   = 100,
-			.pin_txen = S3C2443_GPH14,
+			.padding[0] = S3C2443_GPH14,
 		},
 		.port = {
 			.lock		= __SPIN_LOCK_UNLOCKED(s3c24xx_serial_ports[1].port.lock),
