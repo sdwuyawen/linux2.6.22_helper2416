@@ -2324,6 +2324,7 @@ int uart_add_one_port(struct uart_driver *drv, struct uart_port *port)
 	 * Register the port whether it's detected or not.  This allows
 	 * setserial to be used to alter this ports parameters.
 	 */
+	/* 注册关联于tty_driver的device */
 	tty_register_device(drv->tty_driver, port->line, port->dev);
 
 	/*
