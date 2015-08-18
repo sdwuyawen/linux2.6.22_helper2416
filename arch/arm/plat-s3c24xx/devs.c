@@ -996,7 +996,7 @@ EXPORT_SYMBOL(s3c_device_hsmmc);
 static struct resource s3c_smc911x_resources[] = {
       [0] = {
               .start  = S3C_PA_SMC9115,
-              .end    = S3C_PA_SMC9115 + 0x1fffffff,
+              .end    = S3C_PA_SMC9115 + 0x02000000,
               .flags  = IORESOURCE_MEM,
       },
       [1] = {

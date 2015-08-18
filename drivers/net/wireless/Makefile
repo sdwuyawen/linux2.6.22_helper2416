@@ -44,3 +44,5 @@ obj-$(CONFIG_PCMCIA_WL3501)	+= wl3501_cs.o
 
 obj-$(CONFIG_USB_ZD1201)	+= zd1201.o
 obj-$(CONFIG_LIBERTAS_USB)     += libertas/
+
+obj-$(CONFIG_RTL8188EU)  += rtl8188eus/

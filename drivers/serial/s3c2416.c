@@ -1141,7 +1141,8 @@ s3c24xx_serial_ioctl(struct uart_port *port, unsigned int cmd, unsigned long arg
 	struct serial_rs485 rs485conf;
 	struct s3c24xx_uart_port *ourport = to_ourport(port);
 
-	printk("%s %d\n", __FUNCTION__, __LINE__);
+	if(port->line == 1)
+		printk("%s %d\n", __FUNCTION__, __LINE__);
 
 	switch (cmd) {
 	case TIOCSRS485:
