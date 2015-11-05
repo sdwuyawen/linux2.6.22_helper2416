@@ -107,6 +107,9 @@ obj-$(CONFIG_TCG_TPM)		+= tpm/
 #add by wu,for debug for "done, booting the kernel"
 obj-$(CONFIG_HELPER2416_UART_MODULE)	+= uart_2416.o
 
+#add by wu,for debug for "segmentfault"
+#obj-y += first_drv.o
+
 # Files generated that shall be removed upon make clean
 clean-files := consolemap_deftbl.c defkeymap.c
 
