@@ -1246,6 +1246,9 @@ static int s3c2416_spi_transfer(struct spi_device *spi, struct spi_message *mesg
 			/* 休眠 */
 			wait_for_completion(&info->done);
 		}
+		/* message中每个transfer之间的延时 */
+		if(t->delay_usecs)
+			udelay(t->delay_usecs);
 	}
 
 	DEBUG;
