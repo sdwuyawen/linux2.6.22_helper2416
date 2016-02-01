@@ -258,16 +258,18 @@ static struct platform_device __initdata *smdk_devs[] = {
 
 void __init smdk_machine_init(void)
 {
+	printk("smdk_machine_init\n");
 	/* Configure the LEDs (even if we have no LED support)*/
 
 	s3c2410_gpio_cfgpin(S3C2410_GPF4, S3C2410_GPF4_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_OUTP);
-	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_OUTP);
+//	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_INP);
 	s3c2410_gpio_cfgpin(S3C2410_GPF7, S3C2410_GPF7_OUTP);
 
 	s3c2410_gpio_setpin(S3C2410_GPF4, 1);
 	s3c2410_gpio_setpin(S3C2410_GPF5, 1);
-	s3c2410_gpio_setpin(S3C2410_GPF6, 1);
+//	s3c2410_gpio_setpin(S3C2410_GPF6, 1);
 	s3c2410_gpio_setpin(S3C2410_GPF7, 1);
 
 	/* ≈‰÷√LED“˝Ω≈ */

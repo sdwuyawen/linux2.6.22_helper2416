@@ -646,16 +646,36 @@ static struct spi_board_info hspi_info_helper2416[] =
 		 											*/
 	    	 .platform_data = 0 , 						/* 它在spi_driver里使用 */    	 
 	},
+	{
+		.modalias = "hspi_stm32",  						/* 对应的spi_driver名字也是"hspi_stm32" */
+		.max_speed_hz = 500000,						/* max spi clock (SCK) speed in HZ */
+		.bus_num = 0,    						 		/* jz2440里OLED接在SPI CONTROLLER 1 */
+		.mode    = SPI_MODE_0,
+
+		.chip_select   = 2, 						/* master查表转换 */
+												/* s3c2410_spigpio_probe()
+												   ->spi_new_device() 
+												   {
+													   snprintf(proxy->dev.bus_id, sizeof proxy->dev.bus_id,
+													   "%s.%u", master->cdev.class_id,
+													   chip->chip_select);
+												   }	
+												   会用到chip_select。所以一个spi_master下的两个不同的spi_device的
+												   chip_select必须不同，否则会注册失败。
+
+												*/
+		.platform_data = 0 , 						/* 它在spi_driver里使用 */    	 
+	},
 };
 
 
 static struct s3c2416_hspi_info hspi_cfg = {
-	.board_size = 2,
+	.board_size = 3,
 	.board_info = hspi_info_helper2416,
 	.ss_talbes = {
 		S3C2410_GPL13,
 		S3C2410_GPH10,
-		0,
+		S3C2410_GPL13,
 		0,
 		0,
 		0
